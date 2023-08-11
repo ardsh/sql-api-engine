@@ -1,0 +1,116 @@
+{
+  "name": "sql-api-engine",
+  "version": "0.1.0",
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "engine/dist/**/*",
+    "react/dist/**/*",
+    "utils/dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsup && cat react/dist/index.server.d.ts >> react/dist/index.d.ts",
+    "clean": "rm -rf dist && rm -rf react/dist",
+    "dev": "tsup --watch",
+    "lint": "eslint \"./**/*.ts*\"",
+    "type-check": "tsc --noEmit",
+    "prettier-check": "prettier --check \"./**/*.ts*\"",
+    "test": "jest --forceExit --env @edge-runtime/jest-environment .test.ts && jest --forceExit --env node .test.ts"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "module": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./engine": {
+      "types": "./engine/dist/index.d.ts",
+      "import": "./engine/dist/index.mjs",
+      "module": "./engine/dist/index.mjs",
+      "require": "./engine/dist/index.js"
+    },
+    "./react": {
+      "types": "./react/dist/index.d.ts",
+      "import": "./react/dist/index.mjs",
+      "module": "./react/dist/index.mjs",
+      "require": "./react/dist/index.js"
+    },
+    "./utils": {
+      "types": "./utils/dist/index.d.ts",
+      "import": "./utils/dist/index.mjs",
+      "module": "./utils/dist/index.mjs",
+      "require": "./utils/dist/index.js"
+    }
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node"
+  },
+  "dependencies": {
+    "slonik": "^34.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.2.0",
+    "@types/node": "^17.0.12",
+    "@types/react": "^18.2.8",
+    "@types/react-dom": "^18.2.0",
+    "@sql-api/tsconfig": "workspace:*",
+    "eslint": "^8.47.0",
+    "eslint-config-shared": "workspace:*",
+    "jest": "^29.6.2",
+    "slonik": "^34.1.0",
+    "ts-jest": "^29.1.1",
+    "tsup": "^7.2.0",
+    "typescript": "4.5.5",
+    "zod": "^3.21.4"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "slonik": ">=33",
+    "zod": "^3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=14.6"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/ardsh/sql-api-engine#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ardsh/sql-api-engine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ardsh/sql-api-engine/issues"
+  },
+  "keywords": [
+    "sql-filters",
+    "api-engine",
+    "sql-api-engine",
+    "typesafe",
+    "node",
+    "react",
+    "table",
+    "typescript"
+  ]
+}
