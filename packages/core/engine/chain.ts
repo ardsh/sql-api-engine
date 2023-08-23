@@ -1,3 +1,3 @@
 import { Message } from '../shared/types'
 
-export {};
+export {}

@@ -1,2 +1,1 @@
-export * from './buildView';
-
+export * from './buildView'

@@ -32,5 +32,5 @@ export default defineConfig([
     format: ['cjs', 'esm'],
     external: ['react'],
     dts: true
-  },
+  }
 ])
