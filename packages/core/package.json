@@ -19,7 +19,8 @@
     "lint": "eslint \"./**/*.ts*\"",
     "type-check": "tsc --noEmit",
     "prettier-check": "prettier --check \"./**/*.ts*\"",
-    "test": "jest --forceExit --env @edge-runtime/jest-environment .test.ts && jest --forceExit --env node .test.ts"
+    "tdd": "jest --watch --forceExit --env node .test.ts",
+    "test": "jest --forceExit --env node .test.ts || jest --forceExit --env @edge-runtime/jest-environment .test.ts"
   },
   "exports": {
     "./package.json": "./package.json",
@@ -56,11 +57,12 @@
     "slonik": "^34.1.0"
   },
   "devDependencies": {
+    "@edge-runtime/jest-environment": "^2.3.0",
+    "@sql-api/tsconfig": "workspace:*",
     "@types/jest": "^29.2.0",
     "@types/node": "^17.0.12",
     "@types/react": "^18.2.8",
     "@types/react-dom": "^18.2.0",
-    "@sql-api/tsconfig": "workspace:*",
     "eslint": "^8.47.0",
     "eslint-config-shared": "workspace:*",
     "jest": "^29.6.2",

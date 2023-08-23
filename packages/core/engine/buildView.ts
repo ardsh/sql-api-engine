@@ -3,7 +3,6 @@ import {
   ValueExpression,
   SqlFragment,
   QuerySqlToken,
-  CommonQueryMethods
 } from 'slonik'
 import { z } from 'zod'
 import {
@@ -75,11 +74,7 @@ export type Interpretors<
 
 type BuildView<
   TFilter extends Record<string, any> = Record<never, any>,
-  TFilterKey extends keyof TFilter = keyof TFilter extends Record<infer K, any>
-    ? K extends string
-      ? K
-      : never
-    : never
+  TFilterKey extends keyof TFilter = never
 > = {
   /**
    * Allows adding custom filters to the view
@@ -99,7 +94,7 @@ type BuildView<
   >(filters: {
     [x in TNewFilterKey]?: (
       filter: TNewFilter[x],
-      allFilters: TFilter,
+      allFilters: TFilter & TNewFilter,
       context: any
     ) =>
       | Promise<SqlFragment | null | undefined | false>
@@ -153,6 +148,19 @@ type BuildView<
       [x in TFilterKey]?: TFilter[x]
     }>
   }): Promise<QuerySqlToken>
+  getFilters<TPrefix extends string>(prefix: TPrefix): {
+    [x in TFilterKey extends `${TPrefix}${string}` ? TFilterKey : `${TPrefix}${Extract<TFilterKey, string>}`]?:
+    (
+      filter: TFilter[x extends `${TPrefix}${infer K}` ? K extends TFilterKey ? K : x : x],
+      allFilters: any,
+      context: any
+    ) =>
+      | Promise<SqlFragment | null | undefined | false>
+      | SqlFragment
+      | null
+      | undefined
+      | false
+  }
 } & SqlFragment
 
 export const buildView = (
@@ -162,6 +170,7 @@ export const buildView = (
   if (!parts[0]?.match(/^\s*FROM/i)) {
     throw new Error('First part of view must be FROM')
   }
+  const table = parts[0].match(/^\s*FROM\s+(\S+)/i)?.[1];
   const fromFragment = sql.fragment(parts, ...values)
   const interpreters = {} as Interpretors<Record<string, any>>
 
@@ -180,6 +189,13 @@ export const buildView = (
     addFilters(filters: any) {
       Object.assign(interpreters, filters)
       return self
+    },
+    getFilters(prefix: string) {
+      const filters = {} as any
+      for (const key of Object.keys(interpreters)) {
+        filters[prefix + key.replace(prefix, '')] = (interpreters as any)[key];
+      }
+      return filters
     },
     addStringFilter: (key: string, mapper?: any) => {
       return self.addFilters({
