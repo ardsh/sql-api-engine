@@ -1,9 +1,4 @@
-import {
-  sql,
-  ValueExpression,
-  SqlFragment,
-  QuerySqlToken,
-} from 'slonik'
+import { sql, ValueExpression, SqlFragment, QuerySqlToken } from 'slonik'
 import { z } from 'zod'
 import {
   booleanFilter,
@@ -148,10 +143,17 @@ type BuildView<
       [x in TFilterKey]?: TFilter[x]
     }>
   }): Promise<QuerySqlToken>
-  getFilters<TPrefix extends string>(prefix: TPrefix): {
-    [x in TFilterKey extends `${TPrefix}${string}` ? TFilterKey : `${TPrefix}${Extract<TFilterKey, string>}`]?:
-    (
-      filter: TFilter[x extends `${TPrefix}${infer K}` ? K extends TFilterKey ? K : x : x],
+  getFilters<TPrefix extends string>(
+    prefix: TPrefix
+  ): {
+    [x in TFilterKey extends `${TPrefix}${string}`
+      ? TFilterKey
+      : `${TPrefix}${Extract<TFilterKey, string>}`]?: (
+      filter: TFilter[x extends `${TPrefix}${infer K}`
+        ? K extends TFilterKey
+          ? K
+          : x
+        : x],
       allFilters: any,
       context: any
     ) =>
@@ -170,7 +172,7 @@ export const buildView = (
   if (!parts[0]?.match(/^\s*FROM/i)) {
     throw new Error('First part of view must be FROM')
   }
-  const table = parts[0].match(/^\s*FROM\s+(\S+)/i)?.[1];
+  const table = parts[0].match(/^\s*FROM\s+(\S+)/i)?.[1]
   const fromFragment = sql.fragment(parts, ...values)
   const interpreters = {} as Interpretors<Record<string, any>>
 
@@ -193,7 +195,7 @@ export const buildView = (
     getFilters(prefix: string) {
       const filters = {} as any
       for (const key of Object.keys(interpreters)) {
-        filters[prefix + key.replace(prefix, '')] = (interpreters as any)[key];
+        filters[prefix + key.replace(prefix, '')] = (interpreters as any)[key]
       }
       return filters
     },

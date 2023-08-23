@@ -14,18 +14,22 @@ it('Allows building a view from a string', async () => {
     .addBooleanFilter('long_email', () => sql.fragment`LENGTH(email) > 10`)
 
   const compositeView = buildView`FROM users
-    LEFT JOIN test_table_bar ON test_table_bar.uid = users.id`
-    .addFilters(usersView.getFilters('users.'))
+    LEFT JOIN test_table_bar ON test_table_bar.uid = users.id`.addFilters(
+    usersView.getFilters('users.')
+  )
   expect(
-    (await compositeView.getQuery({
-      where: {
-        "users.long_email": true,
-      }
-    })).sql).toMatch("LENGTH(email) > 10");
+    (
+      await compositeView.getQuery({
+        where: {
+          'users.long_email': true
+        }
+      })
+    ).sql
+  ).toMatch('LENGTH(email) > 10')
   const data = await db.any(
     await usersView.getQuery({
       where: {
-        "users.last_name": {
+        'users.last_name': {
           _ilike: '%e%'
         },
         long_email: true,
