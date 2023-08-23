@@ -12,5 +12,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "next": "^13.4.19"
   }
 }

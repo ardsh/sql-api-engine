@@ -12,6 +12,7 @@
       "dependsOn": ["^build", "build"]
     },
     "test": {
+      "env": ["POSTGRES_DSN", "PGUSER", "PGHOST", "PGPASSWORD", "PGDATABASE", "PGPORT"],
       "dependsOn": ["^build", "build"]
     },
     "publint": {
