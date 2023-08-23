@@ -43,6 +43,7 @@ buildView`SELECT * FROM posts INNER JOIN users ON users.id = posts.author`
 .addFilters(usersView.getFilters('users.'))// Adds a prefix to all filters to avoid conflicts
 ```
 
+It is important to always require the table/view name be specified in all SQL fragments.
 */
 
 export type Interpretors<
@@ -61,6 +62,11 @@ type BuildView<
     TFilter extends Record<string, any>=Record<never, any>,
     TFilterKey extends keyof TFilter = keyof TFilter extends Record<infer K, any> ? K extends string ? K : never : never
 > = {
+    /**
+     * Allows adding custom filters to the view
+     * Multiple filters can be added at once
+     * @param filters - The filters to add
+     */
     addFilters<
         TNewFilter extends Record<string, any>=Record<never, any>,
         TNewFilterKey extends keyof TNewFilter = keyof TNewFilter extends Record<infer K, any> ? K extends string ? K : never : never
@@ -70,10 +76,32 @@ type BuildView<
             allFilters: TFilter,
             context: any
         ) => Promise<SqlFragment | null | undefined | false> | SqlFragment | null | undefined | false;
-    }): BuildView<TNewFilter, TNewFilterKey>;
+    }): BuildView<TNewFilter & TFilter, keyof TNewFilter | TFilterKey>;
+    /**
+     * Allows filtering by string operators, e.g. "contains", "starts with", "ends with", etc.
+     * @param field - The name of the filter - Can be a nested field, e.g. "user.name"
+     * @param mapper - Optional if you want to use a different column name than the filter name
+     */
     addStringFilter: <TKey extends string>(field: TKey, mapper?: (key: any) => SqlFragment) => BuildView<TFilter & { [x in TKey]?: z.infer<typeof stringFilterType> }, keyof TFilter | TKey>;
+    /**
+     * Allows filtering by comparison operators, e.g. "greater than", "less than", "between", "in", etc.
+     * @param field - The name of the filter - Can be a nested field, e.g. "user.name"
+     * @param mapper - Optional if you want to use a different column name than the filter name
+     * @returns 
+     */
     addComparisonFilter: <TKey extends string>(field: TKey, mapper?: (key: any) => SqlFragment) => BuildView<TFilter & { [x in TKey]?: z.infer<typeof comparisonFilterType> }, keyof TFilter | TKey>;
+    /**
+     * Allows filtering by boolean operators, e.g. "is true", "is false", "is null", etc.
+     * @param field - The name of the filter - Can be a nested field, e.g. "user.name"
+     * @param mapper - Optional if you want to use a different column name than the filter name
+     * @returns 
+     */
     addBooleanFilter: <TKey extends string>(field: TKey, mapper?: (key: any) => SqlFragment) => BuildView<TFilter & { [x in TKey]?: boolean }, keyof TFilter | TKey>;
+    /**
+     * Returns the SQL query
+     * @param args - The arguments to filter by
+     * @returns - The SQL query fragment
+     * */
     getQuery(args: {
         where?: RecursiveFilterConditions<{
             [x in TFilterKey]?: TFilter[x];
@@ -103,24 +131,24 @@ export const buildView = (parts: readonly string[], ...values: readonly ValueExp
         },
         addStringFilter: (key: string, mapper?: any) => {
             return self.addFilters({
-                [key]: (...args: any) => stringFilter(args[0], mapper ? mapper(...args) : sql.identifier([key]) as any)
+                [key]: (...args: any) => stringFilter(args[0], mapper ? mapper(...args) : sql.identifier([...key.split('.')]) as any)
             });
         },
         addComparisonFilter: (key: string, mapper?: any) => {
             return self.addFilters({
-                [key]: (...args: any) => comparisonFilter(args[0], mapper ? mapper(...args) : sql.identifier([key]) as any)
+                [key]: (...args: any) => comparisonFilter(args[0], mapper ? mapper(...args) : sql.identifier([...key.split('.')]) as any)
             });
         },
         addBooleanFilter: (key: string, mapper?: any) => {
             return self.addFilters({
-                [key]: (...args: any) => booleanFilter(args[0], mapper ? mapper(...args) : sql.identifier([key]) as any)
+                [key]: (...args: any) => booleanFilter(args[0], mapper ? mapper(...args) : sql.identifier([...key.split('.')]) as any)
             });
         },
         getQuery: async (args: any) => {
-            return sql.unsafe`SELECT * ${fromFragment} ${sql.identifier`blabla`} WHERE ${await getWhereFragment(args.where, args.ctx)}`;
+            return sql.unsafe`SELECT * ${fromFragment} WHERE ${await getWhereFragment(args.where, args.ctx)}`;
         },
     }
-    return self as BuildView<any>;
+    return self as BuildView;
 }
 
 
