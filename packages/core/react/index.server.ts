@@ -1,1 +1,3 @@
-export {}
+export {
+    makeTableCreator
+} from './makeTableCreator';
