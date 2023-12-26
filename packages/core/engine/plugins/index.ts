@@ -1,2 +1,1 @@
-
-export * from './useSlowQueryPlugin';
+export * from './useSlowQueryPlugin'

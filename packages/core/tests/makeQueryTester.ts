@@ -1,55 +1,68 @@
-import { createPool, CommonQueryMethods, sql, ClientConfiguration, createTypeParserPreset } from 'slonik';
-import { createQueryLoggingInterceptor } from "slonik-interceptor-query-logging";
+import {
+  createPool,
+  CommonQueryMethods,
+  sql,
+  ClientConfiguration,
+  createTypeParserPreset
+} from 'slonik'
+import { createQueryLoggingInterceptor } from 'slonik-interceptor-query-logging'
 
 export function getPostgresUrl(): string {
-    const defaultUrl = `postgres://${encodeURIComponent(process.env.PGUSER || 'postgres')}:${encodeURIComponent(process.env.PGPASSWORD || '')}@${
-        process.env.PGHOST || '0.0.0.0'
-    }:${process.env.PGPORT || '5432'}/${process.env.PGDATABASE || 'postgres'}`;
-    return process.env.POSTGRES_DSN || defaultUrl;
+  const defaultUrl = `postgres://${encodeURIComponent(
+    process.env.PGUSER || 'postgres'
+  )}:${encodeURIComponent(process.env.PGPASSWORD || '')}@${
+    process.env.PGHOST || '0.0.0.0'
+  }:${process.env.PGPORT || '5432'}/${process.env.PGDATABASE || 'postgres'}`
+  return process.env.POSTGRES_DSN || defaultUrl
 }
 
-export function makeQueryTester(namespace?: string, options?: Partial<ClientConfiguration>) {
-    const pool = createPool(getPostgresUrl(), {
-        ...options,
-        typeParsers: [
-            ...createTypeParserPreset().filter(
-                (a) => a.name !== "timestamp" && a.name !== "timestamptz"
-            ),
-            {
-                name: "timestamptz",
-                parse: (a) =>
-                    !a || !Date.parse(a) ? a : new Date(a).toISOString(),
-            },
-            {
-                name: "timestamp",
-                parse: (a) =>
-                    !a || !Date.parse(a) ? a : new Date(a + "Z").toISOString(),
-            },
-            ...(options?.typeParsers || []),
-        ],
-        interceptors: [
-            ...(options?.interceptors || []),
-            createQueryLoggingInterceptor(),
-        ],
-    });
-    const db: CommonQueryMethods = new Proxy({} as never, {
-        get(target, prop: keyof CommonQueryMethods) {
-            return (...args: any[]) => {
-                return pool.then(db => {
-                    return Function.prototype.apply.apply(db[prop], [db, args]);
-                });
-            }
-        },
-    });
+export function makeQueryTester(
+  namespace?: string,
+  options?: Partial<ClientConfiguration>
+) {
+  const pool = createPool(getPostgresUrl(), {
+    ...options,
+    typeParsers: [
+      ...createTypeParserPreset().filter(
+        a => a.name !== 'timestamp' && a.name !== 'timestamptz'
+      ),
+      {
+        name: 'timestamptz',
+        parse: a => (!a || !Date.parse(a) ? a : new Date(a).toISOString())
+      },
+      {
+        name: 'timestamp',
+        parse: a => (!a || !Date.parse(a) ? a : new Date(a + 'Z').toISOString())
+      },
+      ...(options?.typeParsers || [])
+    ],
+    interceptors: [
+      ...(options?.interceptors || []),
+      createQueryLoggingInterceptor()
+    ]
+  })
+  const db: CommonQueryMethods = new Proxy({} as never, {
+    get(target, prop: keyof CommonQueryMethods) {
+      return (...args: any[]) => {
+        return pool.then(db => {
+          return Function.prototype.apply.apply(db[prop], [db, args])
+        })
+      }
+    }
+  })
 
-    const setup = async () => {
-        if (namespace) {
-            await (await pool).query(sql.unsafe`
+  const setup = async () => {
+    if (namespace) {
+      await (
+        await pool
+      ).query(sql.unsafe`
                 CREATE SCHEMA IF NOT EXISTS ${sql.identifier([namespace])};
                 SET search_path TO ${sql.identifier([namespace])};
-            `);
-        }
-        await (await pool).query(sql.unsafe`
+            `)
+    }
+    await (
+      await pool
+    ).query(sql.unsafe`
             CREATE TABLE IF NOT EXISTS test_table_bar (
                 id integer NOT NULL PRIMARY KEY,
                 uid text NOT NULL,
@@ -91,31 +104,35 @@ export function makeQueryTester(namespace?: string, options?: Partial<ClientConf
                 ('t', 'Katheryn', 'Ritter', 'katheryn89@hotmail.com', NULL),
                 ('s', 'Dulce', 'Espinoza', 'dulce23@gmail.com', NULL),
                 ('r', 'Paucek', 'Clayton', 'paucek.deangelo@hotmail.com', NULL);
-        `);
-    };
-    if ((global as any).beforeAll) {
-        beforeAll(setup);
-    }
+        `)
+  }
+  if ((global as any).beforeAll) {
+    beforeAll(setup)
+  }
 
-    const teardown = async () => {
-        await (await pool).query(sql.unsafe`
+  const teardown = async () => {
+    await (
+      await pool
+    ).query(sql.unsafe`
             DROP TABLE IF EXISTS test_table_bar;
             DROP TABLE IF EXISTS users;
-        `);
-        if (namespace) {
-            await (await pool).query(sql.unsafe`
+        `)
+    if (namespace) {
+      await (
+        await pool
+      ).query(sql.unsafe`
                 DROP SCHEMA IF EXISTS ${sql.identifier([namespace])} CASCADE;
-            `);
-        }
-
-        await (await pool).end();
-    };
-    if ((global as any).afterAll) {
-        afterAll(teardown);
+            `)
     }
-    return {
-        db,
-        setup,
-        teardown,
-    };
+
+    await (await pool).end()
+  }
+  if ((global as any).afterAll) {
+    afterAll(teardown)
+  }
+  return {
+    db,
+    setup,
+    teardown
+  }
 }

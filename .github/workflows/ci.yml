@@ -28,8 +28,26 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
 
+      - name: Start PostgreSQL on Ubuntu
+        run: |
+          sudo systemctl start postgresql.service
+          pg_isready
+  
+      - name: Create additional user
+        run: |
+          sudo -u postgres psql --command="CREATE USER testuser PASSWORD 'password'" --command="\du"
+
+      - name: Create additional database
+        run: |
+          sudo -u postgres createdb testdb --owner=testuser
+          PGPASSWORD=password
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
         run: pnpm test
+        env:
+          PGPASSWORD: password
+          PGUSER: testuser
+          PGDATABASE: testdb
