@@ -94,14 +94,14 @@ describe("Query builders", () => {
         expect(rowToJson(sql.fragment`test`, 'test')?.sql).toMatch(`row_to_json`);
     });
     it("Rows to array", () => {
-        expect(rowsToArray(sql.fragment`test`, sql.fragment`FROM`, 'test')?.sql).toMatch('json_agg');
+        expect(rowsToArray(sql.fragment`test FROM`, 'test')?.sql).toMatch('json_agg');
     });
 
     it("Selects rows to array", async () => {
         const result = await db.any(sql.unsafe`SELECT ${
             rowsToArray(
-                sql.fragment`SELECT email, date_of_birth`,
-                sql.fragment`FROM users`,
+                sql.fragment`SELECT email, date_of_birth FROM users`,
+                'users',
             )
         }`);
         expect(result).toEqual([{
@@ -117,12 +117,12 @@ describe("Query builders", () => {
             rowsToArray(
                 sql.fragment`SELECT
                     ${rowsToArray(
-                        sql.fragment`SELECT email`,
-                        sql.fragment`FROM users`,
+                        sql.fragment`SELECT email FROM users`,
                         'emails'
                     )}
-                , date_of_birth`,
-                sql.fragment`FROM users`,
+                , date_of_birth
+                FROM users`,
+                'users',
             )
         }`);
         expect(result).toEqual([{

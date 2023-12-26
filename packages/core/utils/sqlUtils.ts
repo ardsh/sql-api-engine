@@ -15,18 +15,10 @@ row_to_json((SELECT row FROM (${fragment}) row)) AS ${sql.identifier([name || 'r
 
 export const rowsToArray = (
     fragment: Fragment,
-    fromFragment: Fragment,
     name?: string
-) => sql.fragment`
-( SELECT coalesce(json_agg("rows"), '[]') AS "rows" FROM (
-SELECT row_to_json((
-        SELECT "element" FROM (
-            ${fragment}
-        ) AS "element"
-    )) AS "rows"
-    ${fromFragment}
-) all_rows
-) AS ${sql.identifier([name || findTableName(fromFragment) || 'rows_to_array'])}
+) => sql.fragment`(
+    SELECT COALESCE(json_agg("rows"), '[]') FROM (${fragment}) rows
+) AS ${sql.identifier([name || 'rows_to_array'])}
 `;
 
 export const arrayStringFilterType = arrayifyType(z.string());

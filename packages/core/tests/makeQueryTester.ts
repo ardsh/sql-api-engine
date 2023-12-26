@@ -1,4 +1,4 @@
-import { createPool, CommonQueryMethods, sql, ClientConfiguration } from 'slonik';
+import { createPool, CommonQueryMethods, sql, ClientConfiguration, createTypeParserPreset } from 'slonik';
 import { createQueryLoggingInterceptor } from "slonik-interceptor-query-logging";
 
 export function getPostgresUrl(): string {
@@ -11,6 +11,22 @@ export function getPostgresUrl(): string {
 export function makeQueryTester(namespace?: string, options?: Partial<ClientConfiguration>) {
     const pool = createPool(getPostgresUrl(), {
         ...options,
+        typeParsers: [
+            ...createTypeParserPreset().filter(
+                (a) => a.name !== "timestamp" && a.name !== "timestamptz"
+            ),
+            {
+                name: "timestamptz",
+                parse: (a) =>
+                    !a || !Date.parse(a) ? a : new Date(a).toISOString(),
+            },
+            {
+                name: "timestamp",
+                parse: (a) =>
+                    !a || !Date.parse(a) ? a : new Date(a + "Z").toISOString(),
+            },
+            ...(options?.typeParsers || []),
+        ],
         interceptors: [
             ...(options?.interceptors || []),
             createQueryLoggingInterceptor(),

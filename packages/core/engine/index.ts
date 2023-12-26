@@ -11,3 +11,5 @@ export const createOptions: ReturnFirstArgument<typeof makeQueryLoader> = ((opti
 });
 
 export type { Plugin } from './plugins/types';
+
+export { sqlWith } from './sqlWith';
