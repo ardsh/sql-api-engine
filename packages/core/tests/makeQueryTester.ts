@@ -34,6 +34,11 @@ export function makeQueryTester(
         name: 'timestamp',
         parse: a => (!a || !Date.parse(a) ? a : new Date(a + 'Z').toISOString())
       },
+      {
+        name: 'int8',
+        // TODO: Investigate why BigInt not working
+        parse: a => parseInt(a)
+      },
       ...(options?.typeParsers || [])
     ],
     interceptors: [
@@ -63,6 +68,8 @@ export function makeQueryTester(
     await (
       await pool
     ).query(sql.unsafe`
+            DROP TABLE IF EXISTS test_table_bar;
+            DROP TABLE IF EXISTS users;
             CREATE TABLE IF NOT EXISTS test_table_bar (
                 id integer NOT NULL PRIMARY KEY,
                 uid text NOT NULL,
