@@ -240,7 +240,11 @@ export function makeQueryLoader<
   > = Exclude<keyof (z.infer<TObject> & TVirtuals), number | symbol>,
   TContext = z.infer<TContextZod>,
   TFilterOrEnabled extends boolean = false,
-  TSortableDefault extends TSortable = TSortable
+  TSortableDefault extends TSortable = TSortable,
+  TRemoteLoad extends Record<keyof TVirtuals, any> = Record<
+    keyof TVirtuals,
+    never
+  >
 >(options: {
   query: {
     /** The select query (without including FROM) */
@@ -315,6 +319,24 @@ export function makeQueryLoader<
    * */
   selectableColumns?: readonly [TSelectable, ...TSelectable[]]
   /**
+   * Specify custom loaders for each virtual field.
+   * This is useful for remote joins, where you want to load the virtual fields in batch for all rows.
+   * */
+  virtualFieldLoaders?: {
+    [x in keyof TRemoteLoad]?: (
+      rows: readonly z.infer<TObject>[],
+      args: LoadParameters<
+        TFilterTypes,
+        TContext,
+        z.infer<TObject>,
+        keyof z.infer<TObject> & TSelectable,
+        TSortable,
+        boolean,
+        TFilterOrEnabled extends true ? never : 'OR'
+      >
+    ) => PromiseLike<TRemoteLoad[x]> | TRemoteLoad[x]
+  }
+  /**
    * Specify a mapping of virtual fields, with their dependencies
    * */
   virtualFields?: {
@@ -330,7 +352,10 @@ export function makeQueryLoader<
           TSortable,
           boolean,
           TFilterOrEnabled extends true ? never : 'OR'
-        >
+        >,
+        remoteLoadResult: x extends keyof TRemoteLoad
+          ? Readonly<TRemoteLoad[x]>
+          : undefined
       ) => PromiseLike<TVirtuals[x]> | TVirtuals[x]
       dependencies: readonly (keyof z.infer<TObject>)[]
     }
@@ -456,9 +481,14 @@ export function makeQueryLoader<
         const { default: Nativebird } = await import('nativebird')
         await Promise.all(
           selected.map(async key => {
+            const remoteLoad = (await options.virtualFieldLoaders?.[key]?.(
+              rows,
+              args
+            )) as any
             const firstResolve = options.virtualFields![key]!.resolve(
               rows[0],
-              args
+              args,
+              remoteLoad
             )
             if (
               typeof (firstResolve as PromiseLike<any>)?.then === 'function'
@@ -468,16 +498,21 @@ export function makeQueryLoader<
                 async (row: any) => {
                   row[key] = await options.virtualFields![key]!.resolve(
                     row,
-                    args
+                    args,
+                    remoteLoad
                   )
                 },
                 { concurrency: options?.options?.runConcurrency || 50 }
               )
-              ;(rows as any)[0][key] = await firstResolve
+              ;(rows[0] as any)[key] = await firstResolve
             } else {
-              ;(rows as any)[0][key] = firstResolve
+              ;(rows[0] as any)[key] = firstResolve
               for (const row of rows.slice(1) as any[]) {
-                row[key] = options.virtualFields![key]!.resolve(row, args)
+                row[key] = options.virtualFields![key]!.resolve(
+                  row,
+                  args,
+                  remoteLoad
+                )
               }
             }
           })

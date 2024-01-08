@@ -317,6 +317,68 @@ describe('withQueryLoader', () => {
     expectTypeOf(query[0].ids).toEqualTypeOf<string>()
   })
 
+  it('Allows using virtual field loaders with promises', async () => {
+    const loader = makeQueryLoader({
+      db,
+      query: {
+        select: sql.type(zodType)`SELECT *`,
+        view: buildView`FROM test_table_bar`
+      },
+      virtualFieldLoaders: {
+        // @ts-expect-error not supported in typescript 4.5
+        ids: async (rows, args) => {
+          expectTypeOf(rows).toEqualTypeOf<
+            Readonly<Array<z.infer<typeof zodType>>>
+          >()
+          return rows.map(row => row.id + row.uid)
+        }
+      },
+      virtualFields: {
+        ids: {
+          resolve: async (row, args, remoteFields) => {
+            return remoteFields;
+          },
+          dependencies: ['id', 'uid']
+        }
+      }
+    })
+    const query = await loader.load({
+      take: 1,
+      select: ['ids']
+    })
+    expect(query[0]).toEqual(
+      expect.objectContaining({
+        ids: [expect.any(String)]
+      })
+    )
+    // @ts-expect-error not supported in typescript 4.5
+    expect(query[0].ids?.[0]).toEqual(expect.any(String))
+    // @ts-expect-error not supported in typescript 4.5
+    expectTypeOf(query[0]?.ids).toEqualTypeOf<readonly string[]>()
+  })
+
+  it("Doesn't allow non-existent virtual fields to be used in loaders", async () => {
+    const loader = makeQueryLoader({
+      db,
+      query: {
+        select: sql.type(zodType)`SELECT *`,
+        view: buildView`FROM test_table_bar`
+      },
+      virtualFieldLoaders: {
+        // @ts-expect-error ids is not a virtual field
+        ids: async (rows: any[]) => {
+          return rows.map(row => row.id + row.uid)
+        }
+      }
+    })
+    await expect(() =>
+      loader.load({
+        // @ts-expect-error ids is not a virtual field
+        select: ['ids']
+      })
+    ).rejects.toThrow()
+  })
+
   it('Supports multiple (mixed) virtual fields', async () => {
     const loader = makeQueryLoader({
       db,
