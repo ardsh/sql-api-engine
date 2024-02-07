@@ -1,5 +1,11 @@
 # sql-api-engine
 
+## 0.1.6
+
+### Patch Changes
+
+- dc55e39: Added count query loader
+
 ## 0.1.5
 
 ### Patch Changes
