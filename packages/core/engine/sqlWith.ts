@@ -29,7 +29,7 @@ export const getColumnIdentifiers = <T>(tableAlias: string) => {
 
 function getSqlWithArrayQuery<
   TData extends { [key: string]: SerializableValue }
->(data: TData[]) {
+>(data: readonly TData[] | TData[]) {
   const obj = data.find(d => typeof d === 'object' && d)
   if (!obj) {
     console.warn('No object provided in data', data)
@@ -55,7 +55,7 @@ function getSqlWithArrayQuery<
 }
 
 export function sqlWith<TData extends { [key: string]: SerializableValue }>(
-  data: TData[] = []
+  data: readonly TData[] | TData[] = []
 ) {
   const fragments = [
     {
@@ -99,7 +99,7 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
     },
     with: <TNewData extends { [key: string]: SerializableValue }>(
       name: string,
-      data: TNewData[]
+      data: readonly TNewData[] | TNewData[]
     ) => {
       if (fragments.find(f => f.name === name)) {
         throw new Error(`Fragment with name ${name} already exists`)

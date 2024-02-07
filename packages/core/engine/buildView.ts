@@ -424,8 +424,8 @@ export const buildView = (
   ) => {
     const conditions = await getWhereConditions(filters, context, options)
     return conditions.length
-      ? sql.fragment`WHERE (${sql.join(conditions, sql.fragment`\n) AND(\n`)})`
-      : sql.fragment``
+      ? sql.fragment`WHERE \n(${sql.join(conditions, sql.fragment`)\n AND (`)})\n`
+      : sql.fragment`WHERE TRUE`
   }
 
   const getFromFragment = () => {

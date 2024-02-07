@@ -314,6 +314,6 @@ describe('Filters', () => {
         settings: null
       }
     })
-    expect(query?.sql).toBeFalsy()
+    expect(query?.sql).toEqual(`WHERE TRUE`)
   })
 })

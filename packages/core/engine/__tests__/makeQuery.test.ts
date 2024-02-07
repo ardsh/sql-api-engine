@@ -149,6 +149,30 @@ describe('withQueryLoader', () => {
     >()
   })
 
+  it('Works with filter count queries', async () => {
+    const loader = makeQueryLoader({
+      db,
+      query: {
+        select: sql.type(z.object({
+          all: z.number(),
+          largeIds: z.number()
+        }))`
+          SELECT COUNT(1) AS all
+            , COUNT(1) FILTER (WHERE "id" > 5) AS "largeIds"
+        `,
+        view: buildView`FROM test_table_bar`
+      },
+    })
+    const query = await loader.load({
+      select: ['all', 'largeIds'],
+      take: 1
+    });
+    expect(query).toEqual([{
+      all: expect.any(Number),
+      largeIds: expect.any(Number)
+    }])
+  })
+
   it('Returns virtual fields by default if none are selected/excluded', async () => {
     const loader = makeQueryLoader({
       db,
@@ -325,7 +349,6 @@ describe('withQueryLoader', () => {
         view: buildView`FROM test_table_bar`
       },
       virtualFieldLoaders: {
-        // @ts-expect-error not supported in typescript 4.5
         ids: async (rows, args) => {
           expectTypeOf(rows).toEqualTypeOf<
             Readonly<Array<z.infer<typeof zodType>>>
@@ -351,9 +374,7 @@ describe('withQueryLoader', () => {
         ids: [expect.any(String)]
       })
     )
-    // @ts-expect-error not supported in typescript 4.5
     expect(query[0].ids?.[0]).toEqual(expect.any(String))
-    // @ts-expect-error not supported in typescript 4.5
     expectTypeOf(query[0]?.ids).toEqualTypeOf<readonly string[]>()
   })
 
