@@ -153,24 +153,28 @@ describe('withQueryLoader', () => {
     const loader = makeQueryLoader({
       db,
       query: {
-        select: sql.type(z.object({
-          all: z.number(),
-          largeIds: z.number()
-        }))`
+        select: sql.type(
+          z.object({
+            all: z.number(),
+            largeIds: z.number()
+          })
+        )`
           SELECT COUNT(1) AS all
             , COUNT(1) FILTER (WHERE "id" > 5) AS "largeIds"
         `,
         view: buildView`FROM test_table_bar`
-      },
+      }
     })
     const query = await loader.load({
       select: ['all', 'largeIds'],
       take: 1
-    });
-    expect(query).toEqual([{
-      all: expect.any(Number),
-      largeIds: expect.any(Number)
-    }])
+    })
+    expect(query).toEqual([
+      {
+        all: expect.any(Number),
+        largeIds: expect.any(Number)
+      }
+    ])
   })
 
   it('Returns virtual fields by default if none are selected/excluded', async () => {
@@ -359,7 +363,7 @@ describe('withQueryLoader', () => {
       virtualFields: {
         ids: {
           resolve: async (row, args, remoteFields) => {
-            return remoteFields;
+            return remoteFields
           },
           dependencies: ['id', 'uid']
         }

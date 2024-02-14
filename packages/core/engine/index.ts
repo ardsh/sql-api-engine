@@ -21,4 +21,4 @@ export const createOptions: ReturnFirstArgument<
 export type { Plugin } from './plugins/types'
 
 export { sqlWith } from './sqlWith'
-export { makeCountLoader } from './makeCountLoader';
+export { makeCountLoader } from './makeCountLoader'

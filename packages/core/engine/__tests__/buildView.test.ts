@@ -101,9 +101,11 @@ it('Cannot determine table for nonsensical views', async () => {
 
 it('Allows specifying views in query loader', async () => {
   const userView =
-    buildView`FROM (SELECT * FROM users WHERE LENGTH(users."first_name") < 8) users`.addStringFilter(
-      ['email', 'first_name', 'last_name']
-    )
+    buildView`FROM (SELECT * FROM users WHERE LENGTH(users."first_name") < 8) users`
+      .addStringFilter(['email', 'first_name', 'last_name'])
+      .setConstraints(ctx => {
+        return sql.fragment`users."id" IS NOT NULL`
+      })
 
   const loader = makeQueryLoader({
     db,
@@ -119,6 +121,7 @@ it('Allows specifying views in query loader', async () => {
   })
   expect(query.sql).toContain(`"last_name" = `)
   expect(query.sql).toContain('LENGTH(users."first_name") < 8')
+  expect(query.sql).toContain(`users."id" IS NOT NULL`)
   expect(query.values).toEqual(['buzz'])
 
   const data = await loader.load({
