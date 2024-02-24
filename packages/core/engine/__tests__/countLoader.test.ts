@@ -72,3 +72,17 @@ it('Allows setting constraints', async () => {
     all: 0
   })
 })
+
+it('Allows counting only distinct items', async () => {
+  const loader = makeCountLoader({
+    view: userView,
+    counts: {
+      distinct_birthdays: { count: sql.fragment`DISTINCT users.date_of_birth` }
+    },
+    db
+  })
+  const data = await loader.load({ select: ['distinct_birthdays'] })
+  expect(data).toEqual({
+    distinct_birthdays: 5
+  })
+})
