@@ -60,6 +60,8 @@ it('Allows setting constraints', async () => {
     },
     counts: {
       all: {},
+      // @ts-expect-error adminUsers is not a valid filter
+      invalidCount: { adminUsers: true },
       gmail: { isGmail: true },
       nongmail: { isGmail: false },
       adults: { isAdult: true }

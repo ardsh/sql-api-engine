@@ -41,13 +41,13 @@ type NoInfer<T> = [T][T extends any ? 0 : never]
  * FROM users
  * */
 export function makeCountLoader<
-  TView extends BuildView<TFilterTypes, keyof TFilterTypes>,
+  TView extends BuildView<any, any>,
   TFilterTypes extends Record<string, any> = TView extends BuildView<infer T>
     ? T
     : never,
   TCounts extends Record<
     string,
-    Partial<NoInfer<TFilterTypes>> & { count?: SqlFragment }
+    Partial<NoInfer<TFilterTypes>>
   > = never,
   TSelectable extends Exclude<keyof TCounts, number | symbol> = Exclude<
     keyof TCounts,
@@ -59,17 +59,19 @@ export function makeCountLoader<
   constraints,
   db
 }: {
-  view: TView
+  view: TView,
   /** Allows counting only distinct items using a count fragment. E.g.
    * ```
    *   distinct_birthdays: { count: sql.fragment`DISTINCT users.date_of_birth` }
    * ```
    * */
-  counts: TCounts
+  counts: {
+    [K in keyof TCounts]: TCounts[K] & { count?: SqlFragment }
+  },
   constraints?: (
     ctx: any
-  ) => PromiseOrValue<SqlFragment | SqlFragment[] | null | undefined>
-  db?: Pick<CommonQueryMethods, 'any'>
+  ) => PromiseOrValue<SqlFragment | SqlFragment[] | null | undefined>,
+  db?: Pick<CommonQueryMethods, 'any'>,
 }) {
   return {
     async load<TSelect extends TSelectable>(args?: {
