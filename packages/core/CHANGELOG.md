@@ -1,5 +1,11 @@
 # sql-api-engine
 
+## 0.2.0
+
+### Minor Changes
+
+- 1b5d186: Changed `sqlWith` API to specify actual fragment names and remove functions.
+
 ## 0.1.6
 
 ### Patch Changes
