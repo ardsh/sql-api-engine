@@ -1,31 +1,11 @@
 import {
   SerializableValue,
   QuerySqlToken,
-  IdentifierSqlToken,
   FragmentSqlToken,
   CommonQueryMethods,
   sql
 } from 'slonik'
 import { parseSqlQueryValues } from '../shared'
-
-export const getColumnIdentifiers = <T>(tableAlias: string) => {
-  return new Proxy(
-    {
-      names: [tableAlias],
-      type: 'SLONIK_TOKEN_IDENTIFIER'
-    } as any,
-    {
-      get: (_target, property: string) => {
-        if (property === '*')
-          return sql.fragment`${sql.identifier([tableAlias])}.*`
-        if (!property) return sql.identifier([tableAlias])
-        if (property === 'type') return 'SLONIK_TOKEN_IDENTIFIER'
-        if (property === 'names') return [tableAlias]
-        return sql.identifier([tableAlias, property])
-      }
-    }
-  ) as Record<keyof T | '*', IdentifierSqlToken>
-}
 
 function getSqlWithArrayQuery<
   TData extends { [key: string]: SerializableValue }
@@ -54,12 +34,40 @@ function getSqlWithArrayQuery<
         )} FROM JSONB_ARRAY_ELEMENTS(${sql.jsonb(data)}) x`
 }
 
+/**
+ * Usage:
+ *
+ * ```ts
+ * const result = await sqlWith('data', [
+ *     { id: 1, name: 'Alice' },
+ *     { id: 2, name: 'Bob' }
+ * ])
+ * .as('filteredData', sql.unsafe`SELECT * FROM data
+ *     WHERE data.name ILIKE 'BOB'`)
+ * .as('updates', sql.unsafe`UPDATE public.users
+ *     SET name = data.name
+ *     FROM data
+ *     WHERE users.id = data.id
+ *     RETURNING users.*
+ * `)
+ * .runDB(sql.unsafe`SELECT
+ *     ( SELECT COUNT(*) FROM updates ) AS "updatedCount"
+ *     , (SELECT COUNT(*) FROM "filteredData" ) AS "filteredUsers"
+ * `, {
+ *    db: db,
+ * })
+ * ```
+ *
+ * @param name - The name of the fragment to be created. You can reference this fragment name in the later queries.
+ * @param data - The array of objects to be inserted into the query.
+ */
 export function sqlWith<TData extends { [key: string]: SerializableValue }>(
+  name: string,
   data: readonly TData[] | TData[] = []
 ) {
   const fragments = [
     {
-      name: 'data',
+      name,
       fragment: sql.fragment``
     }
   ] as {
@@ -68,7 +76,9 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
   }[]
   const getQuery = (data: TData[]) => {
     const dataQuery = getSqlWithArrayQuery(data)
-    const rootQuery = sql.unsafe`WITH data AS (${dataQuery})`
+    const rootQuery = sql.unsafe`WITH ${sql.identifier([
+      name
+    ])} AS (${dataQuery})`
     return sql.unsafe`${rootQuery} ${sql.join(
       fragments.map(f => f.fragment),
       sql.fragment`\n`
@@ -78,28 +88,26 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
         ])}`
   }
   const self = {
-    as: (
-      name: string,
-      fn: (
-        view: IdentifierSqlToken & {
-          [key in keyof TData | '*']: IdentifierSqlToken
-        }
-      ) => any
-    ) => {
+    as: (name: string, query: QuerySqlToken) => {
       if (fragments.find(f => f.name === name)) {
         throw new Error(`Fragment with name ${name} already exists`)
       }
       fragments.push({
         name,
-        fragment: sql.fragment`, ${sql.identifier([name])} AS (\n${fn(
-          getColumnIdentifiers<TData>('data') as any
-        )})`
+        fragment: sql.fragment`, ${sql.identifier([name])} AS (\n${query})`
       })
       return self
     },
+    /**
+     * Adds array data to the query as if they were temporary tables.
+     * @param name - The name of the fragment to be created. You can reference this fragment name in the later queries.
+     * @param data - The array of objects to be inserted into the query.
+     * @param emptyValue - Specify a dummy object to be inserted if the data array is empty.
+     */
     with: <TNewData extends { [key: string]: SerializableValue }>(
       name: string,
-      data: readonly TNewData[] | TNewData[]
+      data: readonly TNewData[] | TNewData[],
+      emptyValue?: TNewData
     ) => {
       if (fragments.find(f => f.name === name)) {
         throw new Error(`Fragment with name ${name} already exists`)
@@ -108,16 +116,14 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
         name,
         fragment: sql.fragment`, ${sql.identifier([
           name
-        ])} AS (\n${getSqlWithArrayQuery(data)})`
+        ])} AS (\n${getSqlWithArrayQuery(
+          data.length || !emptyValue ? data : [emptyValue]
+        )})`
       })
       return self
     },
     runDB: async (
-      fn: (
-        view: IdentifierSqlToken & {
-          [key in keyof TData | '*']: IdentifierSqlToken
-        }
-      ) => any,
+      query: QuerySqlToken,
       options?: {
         /** This option only prints the queries without executing. Use it for debugging. */
         dryRun?: boolean
@@ -131,7 +137,7 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
     ) => {
       const limit = options?.limit || 2000
       const queries = [] as QuerySqlToken[]
-      self.as('userQuery', fn)
+      self.as('userQuery', query)
       for (let i = 0; i < data.length; i += limit) {
         queries.push(
           self.getQuery(undefined, {
@@ -151,10 +157,7 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
         if (!db || !db.transaction) throw new Error('No db provided')
         await db.transaction(async tx => {
           for (const query of queries) {
-            const result = await tx.any(query).catch(e => {
-              console.error(parseSqlQueryValues(query.sql, query.values))
-              throw e
-            })
+            const result = await tx.any(query)
             results.push(...result)
           }
           if (
@@ -168,18 +171,17 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
       return results
     },
     getQuery: (
-      fn?: (
-        view: IdentifierSqlToken & {
-          [key in keyof TData | '*']: IdentifierSqlToken
-        }
-      ) => any,
+      query?: QuerySqlToken,
       options?: {
         take?: number
         skip?: number
       }
     ) => {
-      if (fn) {
-        self.as('userQuery' + (options?.skip || 0) + (options?.take || 0), fn)
+      if (query) {
+        self.as(
+          'userQuery' + (options?.skip || 0) + (options?.take || 0),
+          query
+        )
       }
       return getQuery(
         data.slice(
@@ -187,7 +189,8 @@ export function sqlWith<TData extends { [key: string]: SerializableValue }>(
           (options?.skip || 0) + (options?.take || data.length)
         )
       )
-    }
+    },
+    printOut: () => {}
   }
   return self
 }

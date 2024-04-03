@@ -18,11 +18,11 @@ const newUsers = [
 ]
 
 it('Inserts data in tables', async () => {
-  const data = await sqlWith(newUsers).runDB(
-    users => sql.unsafe`INSERT INTO users (id, first_name, last_name, email, date_of_birth, created_at)
-            SELECT ${users.id}, ${users.first_name}, ${users.last_name}, ${users.email}, ${users.date_of_birth}::timestamp, ${users.created_at}::timestamp
-            FROM ${users}
-            WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ${users.id})
+  const data = await sqlWith('data', newUsers).runDB(
+    sql.unsafe`INSERT INTO users (id, first_name, last_name, email, date_of_birth, created_at)
+            SELECT data.id, data.first_name, data.last_name, data.email, data.date_of_birth::timestamp, data.created_at::timestamp
+            FROM data
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = data.id)
             RETURNING users.id, users.first_name, users.last_name`,
     {
       db
@@ -50,13 +50,13 @@ it('Can use multiple data sources with', async () => {
       number: 5
     }
   ]
-  const data = await sqlWith(newUsers)
+  const data = await sqlWith('users', newUsers)
     .with('bar', extraData)
     .runDB(
-      users => sql.unsafe`SELECT ${users['*']}
+      sql.unsafe`SELECT users.*
             , bar.*
-            FROM ${users}
-            JOIN bar ON ${users.email} = bar.email`,
+            FROM users
+            JOIN bar ON users.email = bar.email`,
       {
         db
       }
@@ -78,9 +78,9 @@ it('Can use multiple data sources with', async () => {
 
 it('Throws error if fragment name already exists', async () => {
   expect(() => {
-    sqlWith(newUsers)
+    sqlWith('data', newUsers)
       .with('data', newUsers)
-      .runDB(users => sql.unsafe`SELECT ${users['*']} FROM ${users}`, {
+      .runDB(sql.unsafe`SELECT users.* FROM users`, {
         db
       })
   }).toThrowError(/Fragment with name data already exists/)
@@ -98,10 +98,10 @@ it('Can handle nested objects', async () => {
       }
     }
   ]
-  const data = await sqlWith(newData).runDB(
-    users => sql.unsafe`
-            SELECT ${users.id}, ${users.first_name}, ${users.last_name}, ${users.address}::json
-            FROM ${users}
+  const data = await sqlWith('users', newData).runDB(
+    sql.unsafe`
+            SELECT users.id, users.first_name, users.last_name, users.address::json
+            FROM users
             `,
     { db }
   )
@@ -127,10 +127,10 @@ it('Can handle dates', async () => {
       ) as any
     }
   ]
-  const data = await sqlWith(newData).runDB(
-    users => sql.unsafe`
-            SELECT ${users.id}, ${users.active}, ${users.first_name}, ${users.last_name}, ${users.dateOfBirth}
-            FROM ${users}
+  const data = await sqlWith('users', newData).runDB(
+    sql.unsafe`
+            SELECT users.id, users.active, users.first_name, users.last_name, users."dateOfBirth"
+            FROM users
             `,
     { db }
   )
