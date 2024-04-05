@@ -1,5 +1,11 @@
 # sql-api-engine
 
+## 0.2.1
+
+### Patch Changes
+
+- dd71bd4: Changed sqlWith API to be backwards compatible
+
 ## 0.2.0
 
 ### Minor Changes
