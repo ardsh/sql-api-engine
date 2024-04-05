@@ -18,7 +18,7 @@ const newUsers = [
 ]
 
 it('Inserts data in tables', async () => {
-  const data = await sqlWith('data', newUsers).runDB(
+  const data = await sqlWith(newUsers, 'data').runDB(
     sql.unsafe`INSERT INTO users (id, first_name, last_name, email, date_of_birth, created_at)
             SELECT data.id, data.first_name, data.last_name, data.email, data.date_of_birth::timestamp, data.created_at::timestamp
             FROM data
@@ -50,7 +50,7 @@ it('Can use multiple data sources with', async () => {
       number: 5
     }
   ]
-  const data = await sqlWith('users', newUsers)
+  const data = await sqlWith(newUsers, 'users')
     .with('bar', extraData)
     .runDB(
       sql.unsafe`SELECT users.*
@@ -78,7 +78,7 @@ it('Can use multiple data sources with', async () => {
 
 it('Throws error if fragment name already exists', async () => {
   expect(() => {
-    sqlWith('data', newUsers)
+    sqlWith(newUsers, 'data')
       .with('data', newUsers)
       .runDB(sql.unsafe`SELECT users.* FROM users`, {
         db
@@ -98,11 +98,11 @@ it('Can handle nested objects', async () => {
       }
     }
   ]
-  const data = await sqlWith('users', newData).runDB(
-    sql.unsafe`
-            SELECT users.id, users.first_name, users.last_name, users.address::json
-            FROM users
-            `,
+  const data = await sqlWith(newData).runDB(
+    users => sql.unsafe`
+        SELECT ${users.id}, ${users.first_name}, ${users.last_name}, ${users.address}::json
+        FROM ${users}
+    `,
     { db }
   )
   expect(data).toEqual([
@@ -127,9 +127,9 @@ it('Can handle dates', async () => {
       ) as any
     }
   ]
-  const data = await sqlWith('users', newData).runDB(
-    sql.unsafe`
-            SELECT users.id, users.active, users.first_name, users.last_name, users."dateOfBirth"
+  const data = await sqlWith(newData, 'users').runDB(
+    users => sql.unsafe`
+            SELECT ${users.id}, ${users.active}, ${users.first_name}, users.last_name, users."dateOfBirth"
             FROM users
             `,
     { db }
