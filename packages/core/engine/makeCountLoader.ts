@@ -45,7 +45,7 @@ export function makeCountLoader<
   TFilterTypes extends Record<string, any> = TView extends BuildView<infer T>
     ? T
     : never,
-  TCounts extends Record<string, Partial<NoInfer<TFilterTypes>>> = never,
+  TCounts extends Record<string, Partial<TFilterTypes>> = Record<never, any>,
   TSelectable extends Exclude<keyof TCounts, number | symbol> = Exclude<
     keyof TCounts,
     number | symbol
@@ -63,7 +63,7 @@ export function makeCountLoader<
    * ```
    * */
   counts: {
-    [K in keyof TCounts]: TCounts[K] & { count?: SqlFragment }
+    [K in keyof TCounts]: NoInfer<TCounts[K]> & { count?: SqlFragment }
   }
   constraints?: (
     ctx: any
