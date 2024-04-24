@@ -1,5 +1,11 @@
 # sql-api-engine
 
+## 0.2.3
+
+### Patch Changes
+
+- 8e857a5: Allowing WITH CTE to be used in select
+
 ## 0.2.1
 
 ### Patch Changes
