@@ -105,6 +105,31 @@ describe('withQueryLoader', () => {
     expect(result).not.toHaveLength(0)
   })
 
+  it('Allows querying using WITH clauses', async () => {
+    const loader = makeQueryLoader({
+      db,
+      query: {
+        select: sql.type(zodType)`WITH query AS (
+                  SELECT * FROM test_table_bar
+              ) SELECT *`,
+        view: buildView`FROM query`
+      },
+      type: z.object({
+        id: z.number(),
+        uid: z.string(),
+        value: z.string()
+      })
+    })
+    const result = await loader.load({})
+    expect(result[0].id).toEqual(expect.any(Number))
+    expect(result).not.toHaveLength(0)
+    expectTypeOf(result[0]).toEqualTypeOf<{
+      id: number
+      uid: string
+      value: string
+    }>()
+  })
+
   it('Returns correct query', async () => {
     const loader = makeQueryLoader({
       db,
