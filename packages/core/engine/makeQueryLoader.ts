@@ -831,11 +831,8 @@ export function makeQueryLoader<
     }
 
     // Run another root query, that only selects the column names that aren't excluded, or only ones that are included.
-    const finalQuery = sql.type(zodType)`SELECT ${sql.join(
-      finalKeys,
-      sql.fragment`, `
-    )}
-      FROM (${baseQuery}) AS root_query`
+    const finalQuery = sql.type(zodType)`WITH root_query AS (${baseQuery})
+      SELECT ${sql.join(finalKeys, sql.fragment`, `)} FROM root_query`
     for (const plugin of options.plugins || []) {
       if (plugin.onGetQuery) {
         plugin.onGetQuery({

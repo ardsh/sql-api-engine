@@ -1,7 +1,9 @@
 import { sql } from 'slonik'
+import { z } from 'zod'
 import { makeQueryTester } from '../../tests/makeQueryTester'
 import { buildView } from '../index'
 import { makeQueryLoader } from '../makeQueryLoader'
+import { expectTypeOf } from 'expect-type'
 
 const { db } = makeQueryTester('buildView')
 
@@ -318,5 +320,75 @@ describe('Filters', () => {
       }
     })
     expect(query?.sql).toEqual(`WHERE TRUE`)
+  })
+
+  describe('View Data Loading', () => {
+    const userPostType = z.object({
+      id: z.string(),
+      text: z.string()
+    })
+    it('loads data from a view', async () => {
+      const data = await userView.load({
+        where: {
+          settings: null
+        },
+        select: sql.type(
+          userPostType
+        )`SELECT DISTINCT ON(posts.text) users.id, posts.text`,
+        orderBy: sql.fragment`posts.text DESC NULLS LAST`,
+        db
+      })
+      expect(data[0]).toEqual({
+        id: expect.any(String),
+        text: expect.any(String)
+      })
+      expectTypeOf(data[0]).toEqualTypeOf<{
+        id: string
+        text: string
+      }>()
+
+      expect(data[0].text > data[1].text).toBe(true)
+    })
+
+    it('handles groupBy argument for getting the count of user posts', async () => {
+      const data = await userView.load({
+        where: {
+          settings: null
+        },
+        select: sql.fragment`SELECT users.id, COUNT(*)`,
+        groupBy: sql.fragment`users.id`,
+        db
+      })
+      expect(data[0]).toEqual({
+        id: expect.any(String),
+        count: expect.any(Number)
+      })
+    })
+
+    it('handles take, and skip arguments', async () => {
+      const data = await userView.load({
+        select: sql.fragment`SELECT users.id, posts.text`,
+        orderBy: sql.fragment`users.id DESC`,
+        take: 5,
+        skip: 2,
+        db
+      })
+      expect(data.length).toBe(5)
+    })
+    it('handles take, and skip arguments together with groupBy', async () => {
+      const data = await userView.load({
+        select: sql.fragment`SELECT users.id, COUNT(*)`,
+        orderBy: sql.fragment`users.id DESC`,
+        groupBy: sql.fragment`users.id`,
+        take: 5,
+        skip: 2,
+        db
+      })
+      expect(data.length).toBe(5)
+      expect(data[0]).toEqual({
+        id: expect.any(String),
+        count: expect.any(Number)
+      })
+    })
   })
 })

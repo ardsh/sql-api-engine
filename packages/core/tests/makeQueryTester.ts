@@ -68,8 +68,9 @@ export function makeQueryTester(
     await (
       await pool
     ).query(sql.unsafe`
-            DROP TABLE IF EXISTS test_table_bar;
-            DROP TABLE IF EXISTS users;
+            DROP TABLE IF EXISTS test_table_bar CASCADE;
+            DROP TABLE IF EXISTS posts CASCADE;
+            DROP TABLE IF EXISTS users CASCADE;
             CREATE TABLE IF NOT EXISTS test_table_bar (
                 id integer NOT NULL PRIMARY KEY,
                 uid text NOT NULL,
@@ -84,6 +85,15 @@ export function makeQueryTester(
                 "email" text NOT NULL,
                 "date_of_birth" TIMESTAMP,
                 "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS posts (
+                "id" text NOT NULL PRIMARY KEY,
+                "text" text NOT NULL,
+                "title" text NOT NULL,
+                "user_id" text NOT NULL,
+                "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY ("user_id") REFERENCES users (id)
             );
 
             INSERT INTO test_table_bar
@@ -111,6 +121,15 @@ export function makeQueryTester(
                 ('t', 'Katheryn', 'Ritter', 'katheryn89@hotmail.com', NULL),
                 ('s', 'Dulce', 'Espinoza', 'dulce23@gmail.com', NULL),
                 ('r', 'Paucek', 'Clayton', 'paucek.deangelo@hotmail.com', NULL);
+            
+            INSERT INTO posts
+                ("id", "text", "title", "user_id")
+            VALUES
+                ('1', 'Hello, world!', 'My first post', 'z'),
+                ('2', 'Hi, I am Padberg', 'My second post', 'y'),
+                ('3', 'I am Neal', 'My third post', 'x'),
+                ('4', 'This is a test', 'My fourth post', 'y'),
+                ('5', 'The post text', 'My fifth post', 'z');
         `)
   }
   if ((global as any).beforeAll) {
@@ -121,8 +140,9 @@ export function makeQueryTester(
     await (
       await pool
     ).query(sql.unsafe`
-            DROP TABLE IF EXISTS test_table_bar;
-            DROP TABLE IF EXISTS users;
+            DROP TABLE IF EXISTS test_table_bar CASCADE;
+            DROP TABLE IF EXISTS posts CASCADE;
+            DROP TABLE IF EXISTS users CASCADE;
         `)
     if (namespace) {
       await (

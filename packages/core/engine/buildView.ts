@@ -3,7 +3,9 @@ import {
   ValueExpression,
   SqlFragment,
   IdentifierSqlToken,
-  FragmentSqlToken
+  CommonQueryMethods,
+  FragmentSqlToken,
+  QuerySqlToken
 } from 'slonik'
 import { z } from 'zod'
 import {
@@ -21,6 +23,22 @@ import {
 } from '../utils/sqlUtils'
 import { notEmpty } from '../utils/zod'
 import type { PromiseOrValue } from '../utils'
+
+type LoadViewParameters<
+  TFilter extends Record<string, any> = Record<never, any>,
+  TFilterKey extends keyof TFilter = never,
+  TFragment extends SqlFragment | QuerySqlToken = SqlFragment
+> = {
+  select: TFragment
+  orderBy?: SqlFragment
+  groupBy?: SqlFragment
+  take?: number
+  skip?: number
+  where?: RecursiveFilterConditions<{
+    [x in TFilterKey]?: TFilter[x]
+  }>
+  db?: Pick<CommonQueryMethods, 'any'>
+}
 
 export type Interpretors<
   TFilter extends Record<string, any>,
@@ -189,6 +207,42 @@ export type BuildView<
     keyof TFilter | TKey,
     TAliases
   >
+  /**
+   * Loads data from the view
+   * ```
+   * const data = await usersView
+   *  .options({ db }).load({
+   *   select: sql.fragment`*`,
+   *   where: {
+   *     id: 1
+   *   },
+   * })
+   * ```
+   * */
+  load: <
+    TFragment extends SqlFragment | QuerySqlToken,
+    TObject extends z.AnyZodObject = TFragment extends QuerySqlToken<infer T>
+      ? T
+      : any
+  >(
+    args: LoadViewParameters<TFilter, TFilterKey, TFragment>
+  ) => Promise<readonly z.infer<TObject>[]>
+  /**
+   * Sets the context for the view. This context can be used in various parts of the view lifecycle, such as in filters or constraints.
+   * @param ctx - The context object. Each key-value pair in the object sets a context variable.
+   * @returns The updated BuildView instance with the new context.
+   * */
+  context: <TContext extends Record<string, any>>(
+    ctx?: TContext
+  ) => BuildView<TFilter, TFilterKey, TAliases>
+  /**
+   * Sets options for the view. Options can configure various aspects of how the view operates.
+   * @param opts - The options object. Each key-value pair in the object sets an option.
+   * @returns The updated BuildView instance with the new options.
+   * */
+  options: <TOptions extends Record<string, any>>(
+    opts?: TOptions
+  ) => BuildView<TFilter, TFilterKey, TAliases>
   /**
    * Allows preprocessing the filters before they are interpreted
    * */
@@ -374,6 +428,10 @@ type FilterOptions = {
   bypassConstraints?: boolean
 }
 
+type Options = FilterOptions & {
+  db?: Pick<CommonQueryMethods, 'any'>
+}
+
 export const buildView = (
   parts: readonly string[],
   ...values: readonly ValueExpression[]
@@ -387,6 +445,8 @@ export const buildView = (
         ctx: any
       ) => PromiseOrValue<SqlFragment | SqlFragment[] | null | undefined>)
     | null
+  const context = {} as Record<string, any>
+  const options = {} as Options
   const preprocessors = [] as ((
     filters: any,
     context: any
@@ -413,18 +473,26 @@ export const buildView = (
 
   const getWhereConditions = async (
     filters: RecursiveFilterConditions<any>,
-    context?: any,
-    options?: FilterOptions
+    ctx?: any,
+    opts?: FilterOptions
   ) => {
+    const realContext = {
+      ...context,
+      ...ctx
+    }
+    const realOptions = {
+      ...options,
+      ...opts
+    }
     const postprocessedFilters = await preprocessors
       .slice(-1)
       .reduce(async (acc, preprocessor) => {
         const filters: any = await acc
-        return preprocessor(filters, context)
+        return preprocessor(filters, realContext)
       }, filters)
     const authConditions =
-      constraints && !options?.bypassConstraints
-        ? await constraints(context)
+      constraints && !realOptions?.bypassConstraints
+        ? await constraints(realContext)
         : null
     const auth = Array.isArray(authConditions)
       ? authConditions
@@ -432,8 +500,8 @@ export const buildView = (
     const conditions = await interpretFilter(
       postprocessedFilters || filters,
       interpreters as any,
-      context,
-      options
+      realContext,
+      realOptions
     )
     return [...auth, ...conditions]
   }
@@ -573,6 +641,22 @@ export const buildView = (
         return interpret(value, ...args)
       })
     },
+    options: (opts?: Options) => {
+      if (opts && typeof opts === 'object') {
+        for (const [key, value] of Object.entries(opts)) {
+          options[key as keyof Options] = value as any
+        }
+      }
+      return self
+    },
+    context: (ctx?: any) => {
+      if (ctx && typeof ctx === 'object') {
+        for (const [key, value] of Object.entries(ctx)) {
+          context[key] = value
+        }
+      }
+      return self
+    },
     setConstraints(
       cons: (
         ctx: any
@@ -583,6 +667,34 @@ export const buildView = (
     },
     getWhereConditions: async (args: any) => {
       return getWhereConditions(args.where, args.ctx, args.options)
+    },
+    load: async (args: LoadViewParameters) => {
+      const db = args.db || options.db
+      if (!db) {
+        throw new Error(
+          'Database is not set. Please set the database by calling options({ db: db })'
+        )
+      }
+      const whereFragment = args.where
+        ? await getWhereFragment(args.where, context, options)
+        : sql.fragment``
+      const query = sql.unsafe`${
+        args.select
+      } ${getFromFragment()} ${whereFragment}
+      ${args.groupBy ? sql.fragment`GROUP BY ${args.groupBy}` : sql.fragment``}
+      ${args.orderBy ? sql.fragment`ORDER BY ${args.orderBy}` : sql.fragment``}
+      ${
+        typeof args.take === 'number'
+          ? sql.fragment`LIMIT ${args.take}`
+          : sql.fragment``
+      }
+        ${
+          typeof args.skip === 'number'
+            ? sql.fragment`OFFSET ${args.skip}`
+            : sql.fragment``
+        }
+      `
+      return db.any(query)
     },
     getWhereFragment: async (args: any) => {
       return getWhereFragment(args.where, args.ctx, args.options)
