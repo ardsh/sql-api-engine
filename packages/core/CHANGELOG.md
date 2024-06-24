@@ -1,5 +1,11 @@
 # sql-api-engine
 
+## 0.2.4
+
+### Patch Changes
+
+- 204ed99: Added the load method in buildView for quickly loading data
+
 ## 0.2.3
 
 ### Patch Changes
