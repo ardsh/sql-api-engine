@@ -27,9 +27,10 @@ import type { PromiseOrValue } from '../utils'
 type LoadViewParameters<
   TFilter extends Record<string, any> = Record<never, any>,
   TFilterKey extends keyof TFilter = never,
-  TFragment extends SqlFragment | QuerySqlToken = SqlFragment
+  TFragment extends SqlFragment | QuerySqlToken = SqlFragment,
+  TColumns extends string[] = never
 > = {
-  select: TFragment
+  select: TFragment | TColumns
   orderBy?: SqlFragment
   groupBy?: SqlFragment
   take?: number
@@ -67,7 +68,8 @@ export type Interpretors<
 export type BuildView<
   TFilter extends Record<string, any> = Record<never, any>,
   TFilterKey extends keyof TFilter = never,
-  TAliases extends string = '_main'
+  TAliases extends string = '_main',
+  TColumns extends string = never
 > = {
   /**
    * Allows adding custom filters to the view
@@ -98,7 +100,12 @@ export type BuildView<
       | null
       | undefined
       | false
-  }): BuildView<TNewFilter & TFilter, keyof TNewFilter | TFilterKey, TAliases>
+  }): BuildView<
+    TNewFilter & TFilter,
+    keyof TNewFilter | TFilterKey,
+    TAliases,
+    TColumns
+  >
   /**
    * Allows filtering by string operators, e.g. "contains", "starts with", "ends with", etc.
    * @param field - The name of the filter - Can be a nested field, e.g. "user.name"
@@ -121,7 +128,8 @@ export type BuildView<
   ) => BuildView<
     TFilter & { [x in TKey]?: z.infer<typeof stringFilterType> },
     keyof TFilter | TKey,
-    TAliases
+    TAliases,
+    TColumns
   >
   /**
    * Allows filtering by comparison operators, e.g. "greater than", "less than", "between", "in", etc.
@@ -142,11 +150,13 @@ export type BuildView<
           value?: z.infer<typeof comparisonFilterType>,
           allFilters?: TFilter,
           ctx?: any
-        ) => SqlFragment)
+        ) => SqlFragment),
+    type?: string
   ) => BuildView<
     TFilter & { [x in TKey]?: z.infer<typeof comparisonFilterType> },
     keyof TFilter | TKey,
-    TAliases
+    TAliases,
+    TColumns
   >
   /**
    * Allows filtering jsonb columns, using the @> operator to check if a JSONB column contains a certain value or structure.
@@ -183,7 +193,8 @@ export type BuildView<
   ) => BuildView<
     TFilter & { [x in TKey]?: Parameters<typeof jsonbContainsFilter>[0] },
     keyof TFilter | TKey,
-    TAliases
+    TAliases,
+    TColumns
   >
   /**
    * Allows filtering by date operators, e.g. "greater than", "less than" etc.
@@ -205,7 +216,8 @@ export type BuildView<
   ) => BuildView<
     TFilter & { [x in TKey]?: z.infer<typeof dateFilterType> },
     keyof TFilter | TKey,
-    TAliases
+    TAliases,
+    TColumns
   >
   /**
    * Loads data from the view
@@ -221,12 +233,22 @@ export type BuildView<
    * */
   load: <
     TFragment extends SqlFragment | QuerySqlToken,
-    TObject extends z.AnyZodObject = TFragment extends QuerySqlToken<infer T>
-      ? T
-      : any
+    TSelect extends TColumns = never,
+    TObject extends any = [TSelect] extends [never]
+      ? TFragment extends QuerySqlToken<infer T>
+        ? z.infer<T>
+        : any
+      : Record<TSelect, any>
   >(
-    args: LoadViewParameters<TFilter, TFilterKey, TFragment>
-  ) => Promise<readonly z.infer<TObject>[]>
+    args: LoadViewParameters<TFilter, TFilterKey, TFragment, TSelect[]>
+  ) => Promise<readonly TObject[]>
+  setColumns: <TNewColumns extends string = never>(
+    columns:
+      | {
+          [x in TNewColumns]: SqlFragment
+        }
+      | ArrayLike<TNewColumns>
+  ) => BuildView<TFilter, TFilterKey, TAliases, TColumns | TNewColumns>
   /**
    * Sets the context for the view. This context can be used in various parts of the view lifecycle, such as in filters or constraints.
    * @param ctx - The context object. Each key-value pair in the object sets a context variable.
@@ -234,7 +256,7 @@ export type BuildView<
    * */
   context: <TContext extends Record<string, any>>(
     ctx?: TContext
-  ) => BuildView<TFilter, TFilterKey, TAliases>
+  ) => BuildView<TFilter, TFilterKey, TAliases, TColumns>
   /**
    * Sets options for the view. Options can configure various aspects of how the view operates.
    * @param opts - The options object. Each key-value pair in the object sets an option.
@@ -242,13 +264,13 @@ export type BuildView<
    * */
   options: <TOptions extends Record<string, any>>(
     opts?: TOptions
-  ) => BuildView<TFilter, TFilterKey, TAliases>
+  ) => BuildView<TFilter, TFilterKey, TAliases, TColumns>
   /**
    * Allows preprocessing the filters before they are interpreted
    * */
   setFilterPreprocess: (
     preprocess: (filters: TFilter, context: any) => Promise<TFilter> | TFilter
-  ) => BuildView<TFilter, TFilterKey, TAliases>
+  ) => BuildView<TFilter, TFilterKey, TAliases, TColumns>
   /**
    * Sets table aliases. By default there's a `_main` alias for the main table that's referenced in the FROM fragment.
    *
@@ -264,7 +286,7 @@ export type BuildView<
    * */
   setTableAliases: <TNewAliases extends string>(
     table: Record<TNewAliases, string | IdentifierSqlToken>
-  ) => BuildView<TFilter, TFilterKey, TAliases | TNewAliases>
+  ) => BuildView<TFilter, TFilterKey, TAliases | TNewAliases, TColumns>
   /**
    * Allows filtering by boolean operators, e.g. "is true", "is false", "is null", etc.
    * @param field - The name of the filter - Can be a nested field, e.g. "user.name"
@@ -284,11 +306,13 @@ export type BuildView<
           value?: boolean,
           allFilters?: TFilter,
           ctx?: any
-        ) => SqlFragment)
+        ) => SqlFragment),
+    falseFragment?: SqlFragment
   ) => BuildView<
     TFilter & { [x in TKey]?: boolean },
     keyof TFilter | TKey,
-    TAliases
+    TAliases,
+    TColumns
   >
   /**
    * Allows filtering by single or multiple string values
@@ -320,7 +344,8 @@ export type BuildView<
   ) => BuildView<
     TFilter & { [x in TKey]?: TValue | TValue[] | null },
     keyof TFilter | TKey,
-    TAliases
+    TAliases,
+    TColumns
   >
   /**
    * Use this to add a generic filter, that returns a SQL fragment
@@ -341,7 +366,8 @@ export type BuildView<
   ) => BuildView<
     TFilter & { [x in TKey]?: TNewFilter },
     keyof TFilter | TKey,
-    TAliases
+    TAliases,
+    TColumns
   >
   /**
    * Returns the SQL query
@@ -366,7 +392,7 @@ export type BuildView<
     constraints: (
       ctx: any
     ) => PromiseOrValue<SqlFragment | SqlFragment[] | null | undefined>
-  ) => BuildView<TFilter, TFilterKey, TAliases>
+  ) => BuildView<TFilter, TFilterKey, TAliases, TColumns>
   getFromFragment(): FragmentSqlToken
   /**
    * Returns all filters that have been added to the view
@@ -447,6 +473,7 @@ export const buildView = (
     | null
   const context = {} as Record<string, any>
   const options = {} as Options
+  const allColumns = {} as Record<string, SqlFragment | IdentifierSqlToken>
   const preprocessors = [] as ((
     filters: any,
     context: any
@@ -525,7 +552,11 @@ export const buildView = (
   }
 
   const addFilter = (
-    interpreter: (value: any, field: FragmentSqlToken) => any,
+    interpreter: (
+      value: any,
+      field: FragmentSqlToken,
+      ...otherArgs: any[]
+    ) => any,
     fields: string | string[],
     mapper?:
       | SqlFragment
@@ -534,7 +565,8 @@ export const buildView = (
           value?: any,
           allFilters?: any,
           context?: any
-        ) => SqlFragment)
+        ) => SqlFragment),
+    ...otherArgs: any[]
   ) => {
     if (mapper && Array.isArray(fields) && fields.length > 1) {
       throw new Error(
@@ -559,7 +591,7 @@ export const buildView = (
               : config.table && keys.length <= 1
               ? (sql.identifier([config.table, ...keys.slice(-1)]) as any)
               : (sql.identifier([...keys.slice(-2)]) as any)
-            return interpreter(value, identifier)
+            return interpreter(value, identifier, ...otherArgs)
           }
         }
       }, {})
@@ -620,11 +652,19 @@ export const buildView = (
     addStringFilter: (keys: string | string[], name?: any) => {
       return addFilter(stringFilter, keys, name)
     },
-    addComparisonFilter: (keys: string | string[], name?: any) => {
-      return addFilter(comparisonFilter, keys, name)
+    addComparisonFilter: (
+      keys: string | string[],
+      name?: any,
+      ...otherArgs: any[]
+    ) => {
+      return addFilter(comparisonFilter, keys, name, ...otherArgs)
     },
-    addBooleanFilter: (keys: string | string[], name?: any) => {
-      return addFilter(booleanFilter, keys, name)
+    addBooleanFilter: (
+      keys: string | string[],
+      name?: any,
+      ...otherArgs: any[]
+    ) => {
+      return addFilter(booleanFilter, keys, name, ...otherArgs)
     },
     addJsonContainsFilter: (keys: string | string[], name?: any) => {
       return addFilter(jsonbContainsFilter, keys, name)
@@ -678,9 +718,17 @@ export const buildView = (
       const whereFragment = args.where
         ? await getWhereFragment(args.where, context, options)
         : sql.fragment``
-      const query = sql.unsafe`${
-        args.select
-      } ${getFromFragment()} ${whereFragment}
+      const selectFrag = Array.isArray(args.select)
+        ? sql.fragment`SELECT ${sql.join(
+            args.select
+              .map(key => allColumns[key])
+              .filter((frag: any) => {
+                return frag && (frag.sql || frag.type)
+              }),
+            sql.fragment`\n, `
+          )}`
+        : args.select
+      const query = sql.unsafe`${selectFrag} ${getFromFragment()} ${whereFragment}
       ${args.groupBy ? sql.fragment`GROUP BY ${args.groupBy}` : sql.fragment``}
       ${args.orderBy ? sql.fragment`ORDER BY ${args.orderBy}` : sql.fragment``}
       ${
@@ -695,6 +743,20 @@ export const buildView = (
         }
       `
       return db.any(query)
+    },
+    setColumns: (columns: string[] | Record<string, SqlFragment>) => {
+      if (Array.isArray(columns)) {
+        for (const column of columns) {
+          if (typeof column === 'string') {
+            allColumns[column] = sql.identifier([column])
+          }
+        }
+      } else if (typeof columns === 'object') {
+        Object.keys(columns).forEach(
+          key => columns[key] && (allColumns[key] = columns[key])
+        )
+      }
+      return self
     },
     getWhereFragment: async (args: any) => {
       return getWhereFragment(args.where, args.ctx, args.options)

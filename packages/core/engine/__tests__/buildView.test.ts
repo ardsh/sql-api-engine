@@ -234,7 +234,8 @@ describe('Filters', () => {
     .addJsonContainsFilter('settings')
     .addBooleanFilter(
       'isGmail',
-      table => sql.fragment`${table.users}.email ILIKE '%gmail.com'`
+      table => sql.fragment`${table.users}.email ILIKE '%gmail.com'`,
+      sql.fragment`users.email NOT ILIKE '%gmail.com'`
     )
 
   it('Allows specifying generic filters', async () => {
@@ -250,7 +251,7 @@ describe('Filters', () => {
   it('Allows specifying in array filters', async () => {
     const query = await userView.getWhereFragment({
       where: {
-        isGmail: true,
+        isGmail: false,
         postsCount: {
           _gte: 30
         },
@@ -276,6 +277,7 @@ describe('Filters', () => {
     expect(query.sql).toContain(`"users".id = ANY(`)
     expect(query.sql).toContain(`users.id = $`)
     expect(query.sql).toContain(`) OR (`)
+    expect(query.sql).toContain(`NOT ILIKE '%gmail.com'`)
   })
   it('Allows specifying comparison filters', async () => {
     const query = await userView.getWhereFragment({
@@ -289,12 +291,16 @@ describe('Filters', () => {
           {
             'posts.title': 'abc'
           }
-        ]
+        ],
+        'users.created_at': {
+          _is_null: true
+        }
       }
     })
     expect(query.sql).toContain(`"users".id > `)
     expect(query.sql).toContain(`"posts"."title" = `)
     expect(query.sql).toContain(`) AND (`)
+    expect(query.sql).toContain(`IS NULL`)
   })
   it('json filter handles a combination of different types', async () => {
     const settings = {
@@ -387,6 +393,29 @@ describe('Filters', () => {
       expect(data.length).toBe(5)
       expect(data[0]).toEqual({
         id: expect.any(String),
+        count: expect.any(Number)
+      })
+    })
+
+    it('Can take pre-selected columns', async () => {
+      const data = await userView
+        .setColumns(['first_name', 'email'])
+        .setColumns({
+          count: sql.fragment`COUNT(*)`,
+          id: sql.fragment`id`
+        })
+        .load({
+          select: ['count', 'email', 'first_name'],
+          orderBy: sql.fragment`users.id DESC`,
+          groupBy: sql.fragment`users.id`,
+          take: 5,
+          skip: 2,
+          db
+        })
+      expect(data.length).toBe(5)
+      expect(data[0]).toEqual({
+        first_name: expect.any(String),
+        email: expect.any(String),
         count: expect.any(Number)
       })
     })
