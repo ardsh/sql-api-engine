@@ -1,5 +1,11 @@
 # sql-api-engine
 
+## 0.2.5
+
+### Patch Changes
+
+- fe2bc72: Added preselected columns to buildView load
+
 ## 0.2.4
 
 ### Patch Changes
