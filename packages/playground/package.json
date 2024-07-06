@@ -1,0 +1,80 @@
+{
+  "name": "sql-api-playground",
+  "description": "A Playground for SQL API Engine",
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "release": "standard-version",
+    "test": "vitest",
+    "coverage": "vitest run --coverage",
+    "semantic-release": "semantic-release"
+  },
+  "keywords": [
+    "react",
+    "playground",
+    "typescript",
+    "sql-api",
+    "sql-api-engine"
+  ],
+  "author": "ardsh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ardsh/sql-api-engine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ardsh/sql-api-engine/issues"
+  },
+  "homepage": "https://github.com/ardsh/sql-api-engine#readme",
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "@webcontainer/api": "^1.2.0",
+    "ansi-to-html": "^0.7.2",
+    "monaco-editor": "^0.47.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router-dom": "6.21.3",
+    "react-split": "^2.0.14",
+    "sql-formatter": "^15.3.2",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.9",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "dts-bundle-generator": "^9.3.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "slonik": "^37.2.0",
+    "slonik-trpc": "^0.15.5",
+    "typescript": "^5.0.0",
+    "vite": "^5.1.6",
+    "vite-plugin-checker": "^0.6.4",
+    "vite-plugin-html": "^3.2.2",
+    "vite-tsconfig-paths": "^4.3.2",
+    "vitest": "^1.4.0",
+    "zod": "^3.21.4"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
+    ]
+  },
+  "packageManager": "yarn@4.0.2"
+}

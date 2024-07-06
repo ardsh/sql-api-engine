@@ -3,7 +3,7 @@ import type { BuildView } from './buildView'
 import type { PromiseOrValue } from '../utils'
 import { notEmpty } from '../shared'
 
-type NoInfer<T> = [T][T extends any ? 0 : never]
+type NoInferType<T> = [T][T extends any ? 0 : never]
 
 /**
  * A function that uses the postgres FILTER WHERE clause to return multiple counts
@@ -63,7 +63,7 @@ export function makeCountLoader<
    * ```
    * */
   counts: {
-    [K in keyof TCounts]: NoInfer<TCounts[K]> & { count?: SqlFragment }
+    [K in keyof TCounts]: NoInferType<TCounts[K]> & { count?: SqlFragment }
   }
   constraints?: (
     ctx: any

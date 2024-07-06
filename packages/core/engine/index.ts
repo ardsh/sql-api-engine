@@ -18,7 +18,7 @@ export const createOptions: ReturnFirstArgument<
   return options
 }
 
-export type { Plugin } from './plugins/types'
+export type { QueryLoaderPlugin as Plugin } from './plugins/types'
 
 export { sqlWith } from './sqlWith'
 export { makeCountLoader } from './makeCountLoader'

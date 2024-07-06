@@ -732,15 +732,15 @@ export const buildView = (
       ${args.groupBy ? sql.fragment`GROUP BY ${args.groupBy}` : sql.fragment``}
       ${args.orderBy ? sql.fragment`ORDER BY ${args.orderBy}` : sql.fragment``}
       ${
-        typeof args.take === 'number'
+        typeof args.take === 'number' && args.take > 0
           ? sql.fragment`LIMIT ${args.take}`
           : sql.fragment``
       }
-        ${
-          typeof args.skip === 'number'
-            ? sql.fragment`OFFSET ${args.skip}`
-            : sql.fragment``
-        }
+      ${
+        typeof args.skip === 'number' && args.skip > 0
+          ? sql.fragment`OFFSET ${args.skip}`
+          : sql.fragment``
+      }
       `
       return db.any(query)
     },
