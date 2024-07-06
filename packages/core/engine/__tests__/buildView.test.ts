@@ -401,11 +401,12 @@ describe('Filters', () => {
       const data = await userView
         .setColumns(['first_name', 'email'])
         .setColumns({
-          count: sql.fragment`COUNT(*)`,
+          postsCount: sql.fragment`( SELECT COUNT(*) FROM posts
+            WHERE posts.user_id = users.id ) AS "postsCount"`,
           id: sql.fragment`id`
         })
         .load({
-          select: ['count', 'email', 'first_name'],
+          select: ['postsCount', 'email', 'first_name'],
           orderBy: sql.fragment`users.id DESC`,
           groupBy: sql.fragment`users.id`,
           take: 5,
@@ -416,7 +417,7 @@ describe('Filters', () => {
       expect(data[0]).toEqual({
         first_name: expect.any(String),
         email: expect.any(String),
-        count: expect.any(Number)
+        postsCount: expect.any(Number)
       })
     })
   })

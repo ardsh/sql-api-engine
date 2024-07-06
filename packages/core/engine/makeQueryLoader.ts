@@ -8,7 +8,7 @@ import {
 import { z } from 'zod'
 import { notEmpty } from '../utils/zod'
 import { fromCursor, toCursor } from '../shared/cursors'
-import type { Plugin } from './plugins/types'
+import type { QueryLoaderPlugin } from './plugins/types'
 import { PromiseOrValue } from '../utils/types'
 import { RecursiveFilterConditions, BuildView } from './buildView'
 
@@ -266,7 +266,7 @@ export function makeQueryLoader<
           >
         ) => SqlFragment)
   }
-  plugins?: readonly Plugin<any>[]
+  plugins?: readonly QueryLoaderPlugin<any>[]
   /** Optional parameter that can be used to override the slonik query parser.
    * Doesn't need to be used if you use sql.type when declaring the query parameter.
    * */

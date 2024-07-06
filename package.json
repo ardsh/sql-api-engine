@@ -2,6 +2,7 @@
   "private": true,
   "scripts": {
     "build": "turbo build",
+    "build:playground": "turbo build --filter=\"sql-api-playground...\"",
     "changeset": "changeset",
     "clean": "turbo clean",
     "dev": "turbo dev --no-cache --continue",

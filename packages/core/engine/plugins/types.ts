@@ -26,7 +26,7 @@ type OnLoadPaginationOptions<TObject extends Record<string, any> = any> = {
   ) => void
 }
 
-export type Plugin<TObject extends Record<string, any> = any> = {
+export type QueryLoaderPlugin<TObject extends Record<string, any> = any> = {
   onGetQuery?: (options?: OnGetQueryOptions) => void
   onLoad?: (options: OnLoadOptions<TObject>) =>
     | {

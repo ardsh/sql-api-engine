@@ -1,6 +1,6 @@
 import { QuerySqlToken } from 'slonik'
 import { LoadParameters } from '../makeQueryLoader'
-import type { Plugin } from './types'
+import type { QueryLoaderPlugin } from './types'
 
 export type SlowQueryNotification = {
   query: QuerySqlToken
@@ -16,8 +16,9 @@ const defaultLogSlowQuery = (options: SlowQueryNotification) => {
 export const useSlowQueryPlugin = ({
   slowQueryThreshold = 1000,
   callback = defaultLogSlowQuery
-} = {}): Plugin => {
-  const onLoad: Plugin['onLoad'] & Plugin['onLoadPagination'] = loadOptions => {
+} = {}): QueryLoaderPlugin => {
+  const onLoad: QueryLoaderPlugin['onLoad'] &
+    QueryLoaderPlugin['onLoadPagination'] = loadOptions => {
     const start = Date.now()
     return {
       onLoadDone(options: any) {

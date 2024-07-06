@@ -1,0 +1,17 @@
+{
+  "short_name": "sql-api-playground",
+  "name": "sql-api-playground",
+  "description": "sql-api-playground",
+  "icons": [
+    {
+      "src": "images/favicon.ico",
+      "type": "image/x-icon",
+      "sizes": "64x64"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
+}
