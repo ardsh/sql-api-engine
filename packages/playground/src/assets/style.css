@@ -70,6 +70,35 @@ body {
   width: 50vw;
 }
 
+.modal-content h2 {
+  margin-top: 0px;
+}
+
+.log-modal {
+  background-color: #0D0D0D;
+  color: #C0C0C0;
+  padding: 10px;
+}
+
+.noselect {
+  user-select: none;
+}
+
+.spacebetween {
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-close {
+  user-select: none;
+  width: 32px;
+  height: 32px;
+  display: inline-block;
+  text-align: center;
+  line-height: 25px;
+  font-size: 2em;
+}
+
 .settings form {
   display: flex;
   user-select: none;
@@ -79,6 +108,11 @@ body {
 .settings label {
   display: flex;
   justify-content: space-between;
+}
+
+.settings input, .settings select {
+  max-width: 300px;
+  border: 1px solid black;
 }
 
 .folder-input {

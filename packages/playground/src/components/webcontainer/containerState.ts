@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { parseSqlQueryValues } from '@/utils/sqlUtils';
 
-type Status = 'booting' | 'starting' | 'ready';
+type Status = 'booting' | 'installing' | 'starting' | 'ready';
 export type ContainerState = {
   url: string;
   output: string[];
   status: Status;
+  installPercent: number;
   queries: {
     sql: string;
     values: any[];
@@ -15,13 +16,19 @@ export type ContainerState = {
 export const useContainerState = create<ContainerState>(() => ({
   url: '',
   status: 'booting',
+  installPercent: 0,
   output: [],
   queries: [],
 }));
 
-export function setContainerState<TKey extends keyof ContainerState>(key: TKey, value: ContainerState[TKey]) {
+export function setContainerState<TKey extends keyof ContainerState>(
+  key: TKey,
+  value: ContainerState[TKey] | ((prevValue: ContainerState[TKey]) => ContainerState[TKey]),
+) {
   if (value !== undefined) {
-    useContainerState.setState({ [key]: value });
+    useContainerState.setState(
+      typeof value === 'function' ? prevState => ({ [key]: value(prevState[key]) }) : { [key]: value },
+    );
   }
 }
 
@@ -45,6 +52,12 @@ export const useSqlQueries = () =>
           )
           .join(';\n\n') + (state.status === 'starting' ? '\nLoading...' : '')
       : state.status === 'starting'
-      ? 'Loading...'
-      : 'Booting up webcontainer... (may take a minute)',
+      ? 'Starting...'
+      : state.status === 'installing'
+      ? `Installing dependencies...${
+          state.installPercent ? ` ${Math.round(state.installPercent)}%` : ''
+        } (may take a minute)`
+      : state.status === 'booting'
+      ? 'Booting up webcontainer...'
+      : 'Loading...',
   );

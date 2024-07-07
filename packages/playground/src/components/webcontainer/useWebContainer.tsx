@@ -4,7 +4,7 @@ import ANSIToHTML from 'ansi-to-html';
 
 import { containerFiles } from './containerFiles';
 import { addContainerOutput, addSqlQuery, setContainerState } from './containerState';
-import { useDemoCode, useSettingsStore } from '../settings/settingsState';
+import { useDemoCode, useSaveDelay, useSettingsStore } from '../settings/settingsState';
 import { useDebounceEffect } from '@/utils/useDebounceEffect';
 
 const ansiConverter = new ANSIToHTML();
@@ -13,6 +13,7 @@ let webContainer: Promise<WebContainer> | null = null;
 
 export function useWebContainer() {
   const demoCode = useDemoCode();
+  const saveDelay = useSaveDelay();
   const webContainerInstanceRef = useRef<WebContainer | null>(null);
   const startProcessRef = useRef<WebContainerProcess | undefined>();
   const initPromise = useRef<Promise<void>>();
@@ -20,6 +21,7 @@ export function useWebContainer() {
   const restartRef = useRef(false);
 
   const restart = async () => {
+    setContainerState('status', 'starting');
     startProcessRef.current?.kill();
     await webContainerInstanceRef.current?.spawn('killall', ['node']);
     await initPromise.current;
@@ -35,7 +37,7 @@ export function useWebContainer() {
         write(data) {
           try {
             if (data.indexOf('===INIT===') >= 0) {
-              setContainerState('status', 'starting');
+              setContainerState('status', 'ready');
               resetRef.current = true;
             }
             const query = JSON.parse(data);
@@ -48,7 +50,10 @@ export function useWebContainer() {
               setContainerState('status', 'ready');
             }
           } catch (error) {
-            addContainerOutput(ansiConverter.toHtml(data));
+            console.log(data, data.length);
+            if (data.length > 4) {
+              addContainerOutput(ansiConverter.toHtml(data));
+            }
           }
         },
       }),
@@ -60,6 +65,7 @@ export function useWebContainer() {
       webContainerInstanceRef.current = await webContainer;
     }
     if (!webContainerInstanceRef.current) {
+      setContainerState('status', 'booting');
       webContainer = WebContainer.boot();
       webContainerInstanceRef.current = await webContainer;
     }
@@ -68,6 +74,15 @@ export function useWebContainer() {
     await webContainerInstanceRef.current.mount(containerFiles);
 
     const install = await webContainerInstanceRef.current.spawn('yarn', ['install']);
+    install.output.pipeTo(
+      new WritableStream({
+        write(chunk) {
+          const increment = chunk.indexOf('---]') > 0 ? 1 : 0.15;
+          setContainerState('installPercent', current => Math.min(current + increment, 99));
+        },
+      }),
+    );
+    setContainerState('status', 'installing');
     setContainerState('output', ['Installing dependencies...']);
 
     const exitCode = await install.exit;
@@ -90,7 +105,7 @@ export function useWebContainer() {
       }
     },
     [demoCode],
-    200,
+    saveDelay,
   );
   useEffect(() => {
     const bootWebContainer = async () => {

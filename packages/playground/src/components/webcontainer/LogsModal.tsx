@@ -11,15 +11,19 @@ const LogsModal = ({ isOpen, onClose }: LogsProps) => {
   const logs = useContainerState(state => state.output);
 
   return ReactDOM.createPortal(
-    <dialog open className="modal settings">
+    <dialog open className="log-modal modal settings">
       <div className="modal-content">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="noselect spacebetween">
           <h2>Logs</h2>
           <button className="btn-close" onClick={onClose}>
             &times;
           </button>
         </div>
-        <div style={{ maxHeight: '80vh', overflowY: 'auto' }} dangerouslySetInnerHTML={{ __html: logs.join('<br>') }} />
+        <div
+          className="log-content"
+          style={{ maxHeight: '80vh', overflowY: 'auto' }}
+          dangerouslySetInnerHTML={{ __html: logs.join('<br>') }}
+        />
       </div>
     </dialog>,
     document.getElementById('root') ?? document.body,

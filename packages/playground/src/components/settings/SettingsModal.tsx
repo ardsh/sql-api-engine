@@ -27,10 +27,12 @@ const SettingsModal = ({ isOpen, onClose }: SettingsProps) => {
   return ReactDOM.createPortal(
     <dialog open className="modal settings">
       <div className="modal-content">
-        <button className="btn-close" onClick={onClose}>
-          &times;
-        </button>
-        <h2>Settings</h2>
+        <div className="spacebetween noselect">
+          <h2>Settings</h2>
+          <button onClick={onClose} style={{ marginTop: -5, height: 32, width: 32 }}>
+            &times;
+          </button>
+        </div>
         <form>
           {false && (
             <label>
@@ -65,6 +67,18 @@ const SettingsModal = ({ isOpen, onClose }: SettingsProps) => {
             />
           </label>
           <label>
+            Save Delay (ms):
+            <input
+              type="number"
+              name="saveDelay"
+              value={localSettings.saveDelay}
+              onChange={e => setLocalState('saveDelay', Number(e.target.value))}
+              min="0"
+              max="2000"
+              step="100"
+            />
+          </label>
+          <label>
             Module Type:
             <select
               name="moduleType"
@@ -75,7 +89,9 @@ const SettingsModal = ({ isOpen, onClose }: SettingsProps) => {
               <option value="commonjs">CommonJS</option>
             </select>
           </label>
-          <button onClick={saveSettings}>Save</button>
+          <button style={{ marginTop: 10 }} onClick={saveSettings}>
+            Save
+          </button>
         </form>
       </div>
     </dialog>,

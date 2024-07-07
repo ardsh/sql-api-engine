@@ -8,6 +8,7 @@ export type SettingsType = {
   formatQuery: boolean;
   showCountQuery: boolean;
   moduleType: 'commonjs' | 'esm';
+  saveDelay: number;
   code: string;
 };
 export type SettingsStore = {
@@ -23,6 +24,7 @@ export const useSettingsStore = create<SettingsStore>()(
         showValues: false,
         showCountQuery: false,
         moduleType: 'esm',
+        saveDelay: 200,
         formatQuery: true,
         databaseUrl: '',
       },
@@ -48,6 +50,7 @@ export const useSettingsStore = create<SettingsStore>()(
 );
 
 export const useDemoCode = () => useSettingsStore(state => state.settings.code);
+export const useSaveDelay = () => useSettingsStore(state => state.settings.saveDelay);
 
 export const setSettings = (settings: Partial<SettingsType>) =>
   useSettingsStore.setState(state => ({
