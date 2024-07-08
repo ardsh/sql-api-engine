@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { useContainerState } from './containerState';
+import { setContainerState, useContainerState } from './containerState';
 
 type LogsProps = {
   isOpen?: boolean;
@@ -15,6 +15,9 @@ const LogsModal = ({ isOpen, onClose }: LogsProps) => {
       <div className="modal-content">
         <div className="noselect spacebetween">
           <h2>Logs</h2>
+          <button className="btn-clear" onClick={() => setContainerState('output', [])}>
+            Clear Logs
+          </button>
           <button className="btn-close" onClick={onClose}>
             &times;
           </button>

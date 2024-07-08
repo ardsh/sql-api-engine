@@ -14,13 +14,38 @@ const getPackageJsonFile = () => {
       "slonik": "^33.0.3",
       "slonik-trpc": "latest",
       "sql-api-engine": "latest",
-      "tsx": "^4.16.2",
+      "ts-node": "^10.9.2",
       "typescript": "^5.0.0",
       "zod": "^3.19.1"
     },
     "scripts": {
-      "start": "${isCJS ? 'tsx' : 'node --import tsx/esm --loader=import-in-the-middle/hook.mjs'} mainFile.ts"
+      "start": "${
+        isCJS ? 'node --require=ts-node/register' : 'node --loader=ts-node/esm --loader=import-in-the-middle/hook.mjs'
+      } mainFile.ts"
     }
+  }`;
+};
+
+const getTsConfigFile = () => {
+  const isCJS = useSettingsStore.getState().settings.moduleType === 'commonjs';
+  return `
+  {
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "${isCJS ? 'commonjs' : 'esnext'}",
+      "strict": false,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "moduleResolution": "node",
+      "resolveJsonModule": true,
+      "isolatedModules": true,
+      "noEmit": true
+    },
+    "ts-node": {
+      "transpileOnly": true
+    },
+    "include": ["./**/*.ts"],
+    "exclude": ["node_modules", "dist"]
   }`;
 };
 
@@ -116,8 +141,10 @@ function getMainFileContents() {
   });
 
   try {
-    ${importRequire}('./demo').catch(() => {})
-  } catch (e) {}
+    ${importRequire}('./demo.ts').catch(console.error)
+  } catch (e) {
+    console.error(e);
+  }
 `;
 }
 export const containerFiles: FileSystemTree = {
@@ -129,6 +156,11 @@ export const containerFiles: FileSystemTree = {
   'mainFile.ts': {
     file: {
       contents: getMainFileContents(),
+    },
+  },
+  'tsconfig.json': {
+    file: {
+      contents: getTsConfigFile(),
     },
   },
   'package.json': {

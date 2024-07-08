@@ -99,6 +99,11 @@ body {
   font-size: 2em;
 }
 
+.btn-clear {
+  font-size: 1em;
+  height: 32px;
+}
+
 .settings form {
   display: flex;
   user-select: none;

@@ -356,6 +356,19 @@ describe('Filters', () => {
       expect(data[0].text > data[1].text).toBe(true)
     })
 
+    it('Returns empty array for take 0', async () => {
+      const data = await userView.load({
+        where: {
+          settings: null
+        },
+        select: sql.fragment`SELECT users.id, COUNT(*)`,
+        groupBy: sql.fragment`users.id`,
+        take: 0,
+        db
+      })
+      expect(data).toEqual([])
+    })
+
     it('handles groupBy argument for getting the count of user posts', async () => {
       const data = await userView.load({
         where: {
