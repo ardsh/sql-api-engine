@@ -32,26 +32,24 @@ export function useWebContainer() {
     restartRef.current = false;
     resetRef.current = true;
     startProcessRef.current?.exit.then(() => (restartRef.current = true)).catch(() => (restartRef.current = true));
+    let c = 0;
     startProcessRef.current?.output.pipeTo(
       new WritableStream({
         write(data) {
           try {
-            if (data.indexOf('===INIT===') >= 0) {
+            if (data.indexOf('===INIT===') >= 0 && data.length < 12) {
               setContainerState('status', 'ready');
               resetRef.current = true;
+              return;
             }
             const query = JSON.parse(data);
             if (query.sql && query.values && (!query.count || useSettingsStore.getState().settings.showCountQuery)) {
-              if (resetRef.current || restartRef.current) {
-                resetRef.current = false;
-                setContainerState('queries', []);
-              }
-              addSqlQuery(query);
+              addSqlQuery(query, resetRef.current || restartRef.current);
+              resetRef.current = false;
               setContainerState('status', 'ready');
             }
           } catch (error) {
-            console.log(data, data.length);
-            if (data.length > 4) {
+            if (data.length > 4 && c++ > 3) {
               addContainerOutput(ansiConverter.toHtml(data));
             }
           }

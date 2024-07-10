@@ -8,7 +8,7 @@ import slonikTrpc from '../../slonik-trpc.d.ts?raw';
 
 const slonikFiles = import.meta.glob<string>('../../node_modules/slonik/dist/**/*.d.ts', { eager: true, as: 'raw' });
 const zodFiles = import.meta.glob<string>('../../node_modules/zod/**/*.d.ts', { eager: true, as: 'raw' });
-const coreFiles = import.meta.glob<string>('../../../core/engine/dist/**/*.d.ts', { eager: true, as: 'raw' });
+const coreFiles = import.meta.glob<string>('../../../core/engine/**/*.ts', { eager: true, as: 'raw' });
 
 const Editor: any = React.lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.Editor as any })));
 const Split = SplitEdit as any;
@@ -48,8 +48,9 @@ const options: DiffEditorProps = {
     Object.keys(coreFiles).forEach(file => {
       monaco.languages.typescript.typescriptDefaults.addExtraLib(
         `declare module 'sql-api-engine/engine' { ${coreFiles[file]} }`,
-        'file:///node_modules/sql-api-engine/engine/' + file.substring(34),
+        'file:///node_modules/sql-api-engine/engine/' + file.substring(21),
       );
+      // monaco.editor.createModel(coreFiles[file], 'typescript', monaco.Uri.parse('file:///node_modules/sql-api-engine/engine/' + file.substring(21)));
     });
     if (!coreFiles.length) {
       monaco.languages.typescript.typescriptDefaults.addExtraLib(

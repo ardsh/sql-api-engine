@@ -3,7 +3,9 @@ import { format } from 'sql-formatter';
 
 export function parseSqlQueryValues(sql: string, values: any[] | readonly any[]): string {
   const settings = useSettingsStore.getState().settings;
-  if (settings.formatQuery) sql = format(sql, { language: 'postgresql' });
+  try {
+    if (settings.formatQuery) sql = format(sql, { language: 'postgresql' });
+  } catch (e) {}
   if (settings.showValues) return [sql, `-- Values: [${values.join(', ')}]`].join('\n');
   return sql.replace(/\$(\d+)/g, (match, number) => {
     const value = values[number - 1];

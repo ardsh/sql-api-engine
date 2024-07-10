@@ -20,7 +20,9 @@ const getPackageJsonFile = () => {
     },
     "scripts": {
       "start": "${
-        isCJS ? 'node --require=ts-node/register' : 'node --loader=ts-node/esm --loader=import-in-the-middle/hook.mjs'
+        isCJS
+          ? 'node --no-warnings --require=ts-node/register'
+          : 'node --no-warnings --loader=ts-node/esm --loader=import-in-the-middle/hook.mjs'
       } mainFile.ts"
     }
   }`;
@@ -109,7 +111,30 @@ function getMainFileContents() {
             try {
               args[0].db = {
                 any: (sql, values) => {
-                  setTimeout(() => console.log(JSON.stringify(sql)), 100);
+                  setTimeout(() => console.log(JSON.stringify(sql)), 10);
+                }
+              }
+            } catch (e) {
+              console.log(JSON.stringify(e));
+            }
+            const result = Function.prototype.apply.apply(target, [ctx, args]);
+            return result;
+          }
+        });
+        return view;
+      }
+    });
+    ${isCJS ? 'const sqlWith' : 'if (exported.sqlWith) exported.sqlWith'} = new Proxy(exported.sqlWith || {}, {
+      apply(target, ctx, args) {
+        const view = Function.prototype.apply.apply(target, [ctx, args]);
+        view.runDB = new Proxy(view.runDB, {
+          apply(target, ctx, args) {
+            console.log("View", target, args);
+            try {
+              if (!args[1]) args[1] = {};
+              args[1].db = {
+                any: (sql, values) => {
+                  setTimeout(() => console.log(JSON.stringify(sql)), 10);
                 }
               }
             } catch (e) {
@@ -127,12 +152,78 @@ function getMainFileContents() {
         ? `return {
       ...exported,
       buildView,
+      ...(exported.sqlWith && { sqlWith }),
       makeQueryLoader,
     };`
         : ''
     }
   });
+  ${isCJS ? 'new ' : ''}Hook(['pg'], (exported, name, baseDir) => {
+    const Client = exported.default?.Client || exported.Client;
+    Client.prototype.query = (text, values) => {
+      if (!Array.isArray(values)) values = [];
+      if (text?.text || text?.values || text?.sql) {
+        console.log(JSON.stringify({ sql: text?.sql || text?.text, values: text?.values || values || [] }));
+      } else if (typeof text === 'string') {
+        console.log(JSON.stringify({ sql: text, values }));
+      }
+    }
+    Client.prototype.connect = (args) => {
+    }
+    ${
+      isCJS
+        ? `return {
+      ...exported,
+      Client,
+      default: {
+        ...exported.default,
+        Client,
+      },
+    };`
+        : ''
+    }
+  });
+
+  ${isCJS ? 'new ' : ''}Hook(['slonik'], (exported, name, baseDir) => {
+    const createMockPool = new Proxy(exported.createMockPool, {
+      apply(target, ctx, args) {
+        const db = Function.prototype.apply.apply(target, [ctx, args]);
+        const logQuery = (sql) => {
+          if (sql?.sql) {
+            setTimeout(() => console.log(JSON.stringify(sql)), 10);
+          }
+        };
+        const spyMethod = (method) => {
+          db[method] = new Proxy(db[method], {
+            apply(target, ctx, args) {
+              try {
+                logQuery(args[0]);
+              } catch (e) {
+                console.log(JSON.stringify(e));
+              }
+              return Promise.resolve({});
+            }
+          });
+        }
+        Object.keys(db).forEach(key => spyMethod(key));
+        db['transaction'] = (cb) => {
+          return cb(db);
+        }
+        return db;
+      }
+    });
+    ${
+      isCJS
+        ? `return {
+      ...exported,
+      createMockPool,
+      createPool: createMockPool,
+    };`
+        : 'exported.createPool = createMockPool; exported.createMockPool = createMockPool;'
+    }
+  });
   console.log('===INIT===');
+  process.removeAllListeners('warning');
   process.on('uncaughtException', (error) => {
     console.error(error)
   });
@@ -141,7 +232,7 @@ function getMainFileContents() {
   });
 
   try {
-    ${importRequire}('./demo.ts').catch(console.error)
+    ${importRequire}('./demo.ts')${isCJS ? '' : '.catch(console.error)'}
   } catch (e) {
     console.error(e);
   }

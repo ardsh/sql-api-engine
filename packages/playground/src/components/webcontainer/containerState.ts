@@ -37,9 +37,9 @@ export const addContainerOutput = (output: string) =>
     output: [...state?.output, output],
   }));
 
-export const addSqlQuery = (query: { sql: string; values: any[] }) =>
+export const addSqlQuery = (query: { sql: string; values: any[] }, reset?: boolean) =>
   useContainerState.setState(state => ({
-    queries: [...state?.queries, query && { sql: query.sql, values: query.values }],
+    queries: reset && query ? [query] : [...state?.queries, query && { sql: query.sql, values: query.values }],
   }));
 
 export const useSqlQueries = () =>
@@ -54,10 +54,10 @@ export const useSqlQueries = () =>
       : state.status === 'starting'
       ? 'Starting...'
       : state.status === 'installing'
-      ? `Installing dependencies...${
-          state.installPercent ? ` ${Math.round(state.installPercent)}%` : ''
-        } (may take a minute)`
+      ? `Installing dependencies...${state.installPercent ? ` ${Math.round(state.installPercent)}%` : ''}`
       : state.status === 'booting'
       ? 'Booting up webcontainer...'
       : 'Loading...',
   );
+
+export const useContainerStatus = () => useContainerState(state => state.status);

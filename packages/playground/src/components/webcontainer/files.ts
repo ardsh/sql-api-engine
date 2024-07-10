@@ -63,14 +63,6 @@ export const employeeLoader = makeQueryLoader({
         salary: "salary",
         company: "company",
     },
-    virtualFields: {
-        fullName: {
-            dependencies: ["firstName", "lastName"],
-            resolve(row) {
-                return row.firstName + ' ' + row.lastName;
-            },
-        },
-    }
 });
 
 employeeLoader.loadPagination({
