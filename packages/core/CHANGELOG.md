@@ -1,5 +1,11 @@
 # sql-api-engine
 
+## 0.2.6
+
+### Patch Changes
+
+- ad80f4d: Added ctx in buildView
+
 ## 0.2.5
 
 ### Patch Changes
