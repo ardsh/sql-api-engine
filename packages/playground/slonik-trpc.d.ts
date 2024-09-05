@@ -230,7 +230,7 @@ declare type BuildView<
   setConstraints: (
     constraints: (ctx: any) => PromiseOrValue<SqlFragment | SqlFragment[] | null | undefined>,
   ) => BuildView<TFilter, TFilterKey, TAliases>;
-  getFromFragment(): FragmentSqlToken;
+  getFromFragment(ctx?: any): FragmentSqlToken;
   getFilters<
     TInclude extends Extract<TFilterKey, string> | `${string}*` = never,
     TExclude extends Extract<TFilterKey, string> | `${string}*` = never,
@@ -265,7 +265,7 @@ declare type BuildView<
 
 export declare const buildView: (
   parts: readonly string[],
-  ...values: readonly ValueExpression[]
+  ...values: readonly (ValueExpression | ((ctx?: any) => ValueExpression))[]
 ) => BuildView<Record<never, any>, never, '_main', never>;
 
 declare const comparisonFilterType: z.ZodObject<

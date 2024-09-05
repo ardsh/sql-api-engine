@@ -107,7 +107,7 @@ export function makeCountLoader<
                   ).filter(Boolean),
                   sql.fragment`,\n `
                 )}
-            ${view.getFromFragment()}
+            ${view.getFromFragment(args?.ctx)}
             ${
               conditions.length
                 ? sql.fragment`WHERE (${sql.join(

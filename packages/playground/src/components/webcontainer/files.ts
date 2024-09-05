@@ -2,50 +2,36 @@ export const DEFAULT_DEMO_CODE = `
 import { makeQueryLoader, buildView, sql } from 'slonik-trpc';
 import { z } from 'zod';
 
-const employee = z.object({
-    id: z.number(),
-    firstName: z.string(),
-    lastName: z.string(),
-    salary: z.number(),
-    company: z.string(),
-    employed_days: z.number(),
-    startDate: z.string(),
-    endDate: z.string(),
+const postsView = buildView\`
+FROM users
+LEFT JOIN posts
+    ON posts.author = users.id\`
+// Allows filtering posts.title: { _ilike: '%hello%' }
+.addStringFilter('posts.title')
+// Allows filter id: [1, 2, 3]
+.addInArrayFilter('id', sql.fragment\`posts.id\`, 'numeric')
+.addDateFilter('createdDate', sql.fragment\`posts.created_at\`)
+.addComparisonFilter('postLength', sql.fragment\`LENGTH(posts.text)\`)
+
+
+const post = z.object({
+    id: z.string(),
+    author: z.string(),
+    text: z.string(),
+    age: z.number(),
 });
-const query = sql.type(employee)\`
-SELECT *
+
+const postsQuery = sql.type(post)\`
+SELECT "posts".id
+  , "users"."firstName" || ' ' || "users"."lastName" AS "author"
+  , "posts"."text"
+  , EXTRACT(DAYS FROM NOW() - posts."created_at") AS "age"
 \`;
 
-const employeeView = buildView\`FROM (
-    SELECT
-        employees.id,
-        employees.first_name AS "firstName",
-        employees.last_name AS "lastName",
-        employee_companies.salary,
-        companies.name AS company,
-        (end_date - start_date) AS employed_days,
-        companies.id AS company_id,
-        employee_companies.start_date AS "startDate",
-        employee_companies.end_date AS "endDate"
-    FROM employees
-    LEFT JOIN employee_companies
-        ON employees.id = employee_companies.employee_id
-    LEFT JOIN companies
-        ON employee_companies.company_id = companies.id
-) employees\`
-.options({ orEnabled: true })
-.setColumns(["id", "firstName", "lastName", "company_id", "startDate", "endDate", "employed_days", "company", "salary"])
-.addInArrayFilter('employeeId', sql.fragment\`employees.id\`, 'numeric')
-.addInArrayFilter('companyId', sql.fragment\`employees.company_id\`, 'numeric')
-.addDateFilter('employmentStartDate', sql.fragment\`employees."startDate"\`)
-.addDateFilter('employmentEndDate', sql.fragment\`employees."endDate"\`)
-.addComparisonFilter('employmentSalary', sql.fragment\`employees.salary\`)
-;
-
-export const employeeLoader = makeQueryLoader({
+export const postsLoader = makeQueryLoader({
     query: {
-        select: query,
-        view: employeeView,
+        select: postsQuery,
+        view: postsView,
     },
     defaults: {
         orderBy: [["id", "ASC"]],
@@ -55,43 +41,36 @@ export const employeeLoader = makeQueryLoader({
         orFilterEnabled: true,
     },
     sortableColumns: {
-        id: "id",
-        name: sql.fragment\`"firstName" || "lastName"\`,
-        daysEmployed: "employed_days",
-        startDate: "startDate",
-        endDate: "endDate",
-        salary: "salary",
-        company: "company",
+        id: ["posts", "id"],
+        name: sql.fragment\`users."firstName" || users."lastName"\`,
+        // Can reference FROM tables when using raw sql fragments
+        createdAt: ["posts", "created_at"],
     },
 });
 
-employeeLoader.loadPagination({
+postsLoader.loadPagination({
     where: {
-        companyId: [126, 145],
-        employmentStartDate: {
+        createdDate: {
             _gte: "2023-01-01"
         },
-        employmentSalary: {
+        // Only gets posts after 2023-01-01, shorter than 100k characters
+        postLength: {
             _lt: 100000
         },
     },
-    orderBy: [["company", "DESC"], ["salary", "ASC"]],
-    select: ["id", "firstName", "lastName", "salary", "company"],
+    // Ordered by author's name + createdAt
+    orderBy: [["name", "ASC"], ["createdAt", "DESC"]],
+    // Only takes these fields (the rest aren't queried)
+    select: ["id", "author", "age"],
+    // Takes the total count of posts (useful when paginating because only 25 are returned by default)
     takeCount: true,
 });
 
-const oldEmployees = employeeView.load({
-    select: ["id", "company_id"],
+// Views can be queried directly for faster access (without having to create a loader, yet getting access to all the filters)
+const specificPosts = postsView.load({
+    select: sql.fragment\`SELECT posts.title, posts.text\`,
     where: {
-        OR: [{
-            employmentStartDate: {
-                _lt: "2022-01-01",
-            }
-        }, {
-            employmentSalary: {
-                _gte: 100000,
-            }
-        }]
+        id: [123]
     },
 });
 

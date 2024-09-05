@@ -35,6 +35,7 @@ type LoadViewParameters<
   groupBy?: SqlFragment
   take?: number
   skip?: number
+  ctx?: any
   where?: RecursiveFilterConditions<{
     [x in TFilterKey]?: TFilter[x]
   }>
@@ -393,7 +394,7 @@ export type BuildView<
       ctx: any
     ) => PromiseOrValue<SqlFragment | SqlFragment[] | null | undefined>
   ) => BuildView<TFilter, TFilterKey, TAliases, TColumns>
-  getFromFragment(): FragmentSqlToken
+  getFromFragment(ctx?: any): FragmentSqlToken
   /**
    * Returns all filters that have been added to the view
    * @param options - Options for configuring the filters
@@ -460,9 +461,9 @@ type Options = FilterOptions & {
 
 export const buildView = (
   parts: readonly string[],
-  ...values: readonly ValueExpression[]
+  ...values: readonly (ValueExpression | ((ctx: Record<string, any>) => ValueExpression))[]
 ) => {
-  const fromFragment = sql.fragment(parts, ...values)
+  const fromFragment = sql.fragment(parts, ...values.map(v => typeof v === 'function' ? v({}) ?? null : v))
   if (!fromFragment.sql.match(/^\s*FROM/i)) {
     throw new Error('First part of view must be FROM')
   }
@@ -546,9 +547,8 @@ export const buildView = (
       : sql.fragment`WHERE TRUE`
   }
 
-  const getFromFragment = () => {
-    // return sql.fragment`${fromFragment} ${await getWhereFragment(args.where, args.ctx)}`
-    return fromFragment
+  const getFromFragment = (ctx={}) => {
+    return sql.fragment(parts, ...values.map(v => typeof v === 'function' ? v(ctx) ?? null : v))
   }
 
   const addFilter = (
@@ -715,8 +715,13 @@ export const buildView = (
           'Database is not set. Please set the database by calling options({ db: db })'
         )
       }
+      if (args.take === 0) return [];
+      const realContext = {
+        ...context,
+        ...args.ctx,
+      };
       const whereFragment = args.where
-        ? await getWhereFragment(args.where, context, options)
+        ? await getWhereFragment(args.where, realContext, options)
         : sql.fragment``
       const selectFrag = Array.isArray(args.select)
         ? sql.fragment`SELECT ${sql.join(
@@ -728,7 +733,7 @@ export const buildView = (
             sql.fragment`\n, `
           )}`
         : args.select
-      const query = sql.unsafe`${selectFrag} ${getFromFragment()} ${whereFragment}
+      const query = sql.unsafe`${selectFrag} ${getFromFragment(realContext)} ${whereFragment}
       ${args.groupBy ? sql.fragment`GROUP BY ${args.groupBy}` : sql.fragment``}
       ${args.orderBy ? sql.fragment`ORDER BY ${args.orderBy}` : sql.fragment``}
       ${

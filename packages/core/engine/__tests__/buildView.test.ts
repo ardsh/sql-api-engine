@@ -77,6 +77,24 @@ it("Doesn't allow arrays with custom filters", async () => {
     'If you specify a mapper function you cannot have multiple filter keys'
   )
 })
+
+it("Allows using context in view functions", async () => {
+  const loggedInUserView = buildView`FROM (SELECT * FROM users
+  WHERE users.id = ${ctx => ctx.user?.id}) users`;
+  const data = await loggedInUserView.load({
+    select: sql.fragment`SELECT id`,
+    db,
+    ctx: {
+      user: {
+        id: 'y'
+      }
+    }
+  })
+  expect(data).toEqual([{
+    id: 'y',
+  }])
+});
+
 it('Allows specifying multiple keys', async () => {
   const userView = buildView`FROM users`.addStringFilter([
     'email',

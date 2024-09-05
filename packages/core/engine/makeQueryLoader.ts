@@ -416,11 +416,11 @@ export function makeQueryLoader<
   const queryComponents = options.query
   const query = queryComponents.select
   const view = queryComponents.view
-  const fromFragment = view.getFromFragment()
+  const fromFragment = view.getFromFragment({})
   if (query.sql.match(/;\s*$/)) {
     // TODO: Add more checks for invalid queries
     console.warn(
-      'Your query includes semicolons at the end. Please refer to the documentation of slonik-trpc, and do not include semicolons in the query:\n ' +
+      'Your query includes semicolons at the end. Please refer to the documentation of sql-api-engine, and do not include semicolons in the query:\n ' +
         query.sql
     )
   }
@@ -777,6 +777,7 @@ export function makeQueryLoader<
       ? sql.fragment`, ${sql.join(extraSelects, sql.fragment`, `)}`
       : sql.fragment``
 
+    const fromFragment = view.getFromFragment(context)
     const baseQuery = sql.type(zodType)`${actualQuery} ${extraSelectFields} ${
       fromFragment ?? sql.fragment``
     } ${
