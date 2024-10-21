@@ -1,5 +1,12 @@
 # sql-api-engine
 
+## 0.2.6
+
+### Patch Changes
+
+- ad80f4d: Added ctx in buildView
+- ca20dae: Added setAggregate function in buildView to support grouping by
+
 ## 0.2.5
 
 ### Patch Changes
