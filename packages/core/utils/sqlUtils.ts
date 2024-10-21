@@ -53,11 +53,6 @@ export const genericFilter = (value: any, statement: Fragment) => {
   return null
 }
 
-const findTableName = (fragment: Fragment) => {
-  const table = fragment.sql.match(/^\s*FROM\s+(\S+)/i)?.[1]
-  return table?.replace(/\W+/g, '')?.toLowerCase()
-}
-
 export const dateFilter = (
   date: z.infer<typeof dateFilterType> | undefined | null,
   field: Fragment
@@ -274,4 +269,13 @@ export const jsonbContainsFilter = (
     return sql.fragment`(${field})::jsonb @> ${sql.jsonb(filter)}`
   }
   return null
+}
+
+export const filters = {
+  dateFilter: (field: Fragment | string | string[]) => (value: Parameters<typeof dateFilter>[0]) => dateFilter(value, typeof field === 'string' ? sql.identifier([field]) : Array.isArray(field) ? sql.identifier(field) : field),
+  stringFilter: (field: Fragment | string | string[]) => (value: Parameters<typeof stringFilter>[0]) => stringFilter(value, typeof field === 'string' ? sql.identifier([field]) : Array.isArray(field) ? sql.identifier(field) : field),
+  comparisonFilter: (field: Fragment | string | string[]) => (value: Parameters<typeof comparisonFilter>[0]) => comparisonFilter(value, typeof field === 'string' ? sql.identifier([field]) : Array.isArray(field) ? sql.identifier(field) : field),
+  jsonbContainsFilter: (field: Fragment | string | string[]) => (value: Parameters<typeof jsonbContainsFilter>[0]) => jsonbContainsFilter(value, typeof field === 'string' ? sql.identifier([field]) : Array.isArray(field) ? sql.identifier(field) : field),
+  inArrayFilter: (field: Fragment | string | string[], type='text') => (value: Parameters<typeof arrayFilter>[0]) => arrayFilter(value, typeof field === 'string' ? sql.identifier([field]) : Array.isArray(field) ? sql.identifier(field) : field, type),
+  booleanFilter: (trueStatement: Fragment | string | string[], falseStatement?: Fragment) => (value: Parameters<typeof booleanFilter>[0]) => booleanFilter(value, typeof trueStatement === 'string' ? sql.identifier([trueStatement]) : Array.isArray(trueStatement) ? sql.identifier(trueStatement) : trueStatement, falseStatement),
 }

@@ -250,6 +250,10 @@ describe('Filters', () => {
     )
     .addDateFilter('users.created_at')
     .addJsonContainsFilter('settings')
+    .setColumns({
+      name: sql.fragment`users.first_name || ' ' || users.last_name AS "name"`,
+      month: sql.fragment`to_char(date_trunc('month', posts.created_at), 'YYYY-MM') AS "month"`
+    })
     .addBooleanFilter(
       'isGmail',
       table => sql.fragment`${table.users}.email ILIKE '%gmail.com'`,
@@ -450,6 +454,25 @@ describe('Filters', () => {
         email: expect.any(String),
         postsCount: expect.any(Number)
       })
+    })
+
+    it("Can use aggregates", async () => {
+      const view = userView.setAggregates({
+        postsCount: sql.fragment`COUNT(posts.text) AS "postsCount"`
+      })
+      const data = await view.load({
+        select: ['postsCount', 'month'],
+        db,
+        where: {
+          "posts.title": {
+            _is_null: false,
+          }
+        }
+      });
+      expect(data[0]).toEqual({
+        month: expect.any(String),
+        postsCount: expect.any(Number),
+      });
     })
   })
 })

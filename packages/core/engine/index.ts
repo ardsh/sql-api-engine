@@ -22,3 +22,4 @@ export type { QueryLoaderPlugin as Plugin } from './plugins/types'
 
 export { sqlWith } from './sqlWith'
 export { makeCountLoader } from './makeCountLoader'
+export { filters } from '../utils/sqlUtils';
