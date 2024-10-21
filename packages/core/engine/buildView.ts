@@ -93,7 +93,7 @@ export type BuildView<
   >(filters: {
     [x in TNewFilterKey]?: (
       filter: TNewFilter[x],
-      allFilters: TFilter & TNewFilter,
+      allFilters: TFilter & { [y in NoInfer<TNewFilterKey> | x]: any },
       context: any
     ) =>
       | Promise<SqlFragment | null | undefined | false>
@@ -243,6 +243,29 @@ export type BuildView<
   >(
     args: LoadViewParameters<TFilter, TFilterKey, TFragment, TSelect[]>
   ) => Promise<readonly TObject[]>
+  /**
+   * Use this to specify aggregate functions as columns.
+   * If any aggregates are ever selected, the group by clause is automatically added.
+   * And all the non-aggregated columns are grouped by.
+   * Usage:
+   * ```ts
+   * view.setAggregates({
+   *   postsCount: sql.fragment`COUNT(posts.text) AS "postsCount"`
+   * }).setColumns({
+   *   name: sql.fragment`users.first_name || ' ' || users.last_name AS "name"`,
+   *   month: sql.fragment`DATE_TRUNC('month', posts.created_at) AS "month"`,
+   *   postsCount: sql.fragment`COUNT(*) AS "postsCount"`,
+   *   largePostsCount: sql.fragment`COUNT(*) FILTER (WHERE LENGTH(posts.text) > 100) AS "largePostsCount"`,
+   * })
+   * .load({
+   *   // Automatically returns posts grouped by month
+   *   select: ['postsCount', 'month'],
+   * })
+   * ```
+   */
+  setAggregates: <TNewAggregates extends string = never>(aggregates: {
+    [x in TNewAggregates]: SqlFragment
+  }) => BuildView<TFilter, TFilterKey, TAliases, TColumns | TNewAggregates>
   setColumns: <TNewColumns extends string = never>(
     columns:
       | {
@@ -461,9 +484,15 @@ type Options = FilterOptions & {
 
 export const buildView = (
   parts: readonly string[],
-  ...values: readonly (ValueExpression | ((ctx: Record<string, any>) => ValueExpression))[]
+  ...values: readonly (
+    | ValueExpression
+    | ((ctx: Record<string, any>) => ValueExpression)
+  )[]
 ) => {
-  const fromFragment = sql.fragment(parts, ...values.map(v => typeof v === 'function' ? v({}) ?? null : v))
+  const fromFragment = sql.fragment(
+    parts,
+    ...values.map(v => (typeof v === 'function' ? v({}) ?? null : v))
+  )
   if (!fromFragment.sql.match(/^\s*FROM/i)) {
     throw new Error('First part of view must be FROM')
   }
@@ -475,6 +504,7 @@ export const buildView = (
   const context = {} as Record<string, any>
   const options = {} as Options
   const allColumns = {} as Record<string, SqlFragment | IdentifierSqlToken>
+  const allAggregates = {} as Record<string, SqlFragment>
   const preprocessors = [] as ((
     filters: any,
     context: any
@@ -547,8 +577,11 @@ export const buildView = (
       : sql.fragment`WHERE TRUE`
   }
 
-  const getFromFragment = (ctx={}) => {
-    return sql.fragment(parts, ...values.map(v => typeof v === 'function' ? v(ctx) ?? null : v))
+  const getFromFragment = (ctx = {}) => {
+    return sql.fragment(
+      parts,
+      ...values.map(v => (typeof v === 'function' ? v(ctx) ?? null : v))
+    )
   }
 
   const addFilter = (
@@ -715,11 +748,11 @@ export const buildView = (
           'Database is not set. Please set the database by calling options({ db: db })'
         )
       }
-      if (args.take === 0) return [];
+      if (args.take === 0) return []
       const realContext = {
         ...context,
-        ...args.ctx,
-      };
+        ...args.ctx
+      }
       const whereFragment = args.where
         ? await getWhereFragment(args.where, realContext, options)
         : sql.fragment``
@@ -733,8 +766,30 @@ export const buildView = (
             sql.fragment`\n, `
           )}`
         : args.select
-      const query = sql.unsafe`${selectFrag} ${getFromFragment(realContext)} ${whereFragment}
-      ${args.groupBy ? sql.fragment`GROUP BY ${args.groupBy}` : sql.fragment``}
+      let groupBy = args.groupBy
+        ? sql.fragment`GROUP BY ${args.groupBy}`
+        : sql.fragment``
+      const selectedAggregates =
+        (Array.isArray(args.select) &&
+          args.select.map(key => allAggregates[key]).filter(notEmpty)) ||
+        []
+      if (args.groupBy && selectedAggregates.length) {
+        throw new Error('Cannot specify groupBy when selecting aggregates')
+      }
+      if (selectedAggregates.length && Array.isArray(args.select)) {
+        const nonAggregated = args.select
+          .map((key, idx) => [key, idx])
+          .filter(([key]) => !allAggregates[key])
+          .map(([key, idx]) => sql.fragment([idx + 1]))
+        groupBy = sql.fragment`GROUP BY ${sql.join(
+          nonAggregated,
+          sql.fragment`, `
+        )}`
+      }
+      const query = sql.unsafe`${selectFrag} ${getFromFragment(
+        realContext
+      )} ${whereFragment}
+      ${groupBy}
       ${args.orderBy ? sql.fragment`ORDER BY ${args.orderBy}` : sql.fragment``}
       ${
         typeof args.take === 'number' && args.take > 0
@@ -748,6 +803,19 @@ export const buildView = (
       }
       `
       return db.any(query)
+    },
+    setAggregates: (aggregates: Record<string, SqlFragment>) => {
+      if (aggregates && typeof aggregates === 'object') {
+        Object.keys(aggregates).forEach(key => {
+          if (aggregates[key]) {
+            allColumns[key] = aggregates[key]
+            allAggregates[key] = aggregates[key]
+          }
+        })
+      } else {
+        throw new Error('setAggregates must be called with an object')
+      }
+      return self
     },
     setColumns: (columns: string[] | Record<string, SqlFragment>) => {
       if (Array.isArray(columns)) {

@@ -78,9 +78,9 @@ it("Doesn't allow arrays with custom filters", async () => {
   )
 })
 
-it("Allows using context in view functions", async () => {
+it('Allows using context in view functions', async () => {
   const loggedInUserView = buildView`FROM (SELECT * FROM users
-  WHERE users.id = ${ctx => ctx.user?.id}) users`;
+  WHERE users.id = ${ctx => ctx.user?.id}) users`
   const data = await loggedInUserView.load({
     select: sql.fragment`SELECT id`,
     db,
@@ -90,10 +90,12 @@ it("Allows using context in view functions", async () => {
       }
     }
   })
-  expect(data).toEqual([{
-    id: 'y',
-  }])
-});
+  expect(data).toEqual([
+    {
+      id: 'y'
+    }
+  ])
+})
 
 it('Allows specifying multiple keys', async () => {
   const userView = buildView`FROM users`.addStringFilter([
@@ -250,6 +252,10 @@ describe('Filters', () => {
     )
     .addDateFilter('users.created_at')
     .addJsonContainsFilter('settings')
+    .setColumns({
+      name: sql.fragment`users.first_name || ' ' || users.last_name AS "name"`,
+      month: sql.fragment`to_char(date_trunc('month', posts.created_at), 'YYYY-MM') AS "month"`
+    })
     .addBooleanFilter(
       'isGmail',
       table => sql.fragment`${table.users}.email ILIKE '%gmail.com'`,
@@ -448,6 +454,25 @@ describe('Filters', () => {
       expect(data[0]).toEqual({
         first_name: expect.any(String),
         email: expect.any(String),
+        postsCount: expect.any(Number)
+      })
+    })
+
+    it('Can use aggregates', async () => {
+      const view = userView.setAggregates({
+        postsCount: sql.fragment`COUNT(posts.text) AS "postsCount"`
+      })
+      const data = await view.load({
+        select: ['postsCount', 'month'],
+        db,
+        where: {
+          'posts.title': {
+            _is_null: false
+          }
+        }
+      })
+      expect(data[0]).toEqual({
+        month: expect.any(String),
         postsCount: expect.any(Number)
       })
     })

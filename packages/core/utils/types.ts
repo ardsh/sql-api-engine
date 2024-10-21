@@ -1,7 +1,12 @@
-import type { QuerySqlToken, FragmentSqlToken, SerializableValue } from 'slonik'
+import type {
+  QuerySqlToken,
+  FragmentSqlToken,
+  IdentifierSqlToken,
+  SerializableValue
+} from 'slonik'
 import { makeQueryLoader } from '../engine'
 
-export type Fragment = FragmentSqlToken
+export type Fragment = FragmentSqlToken | IdentifierSqlToken
 export type { QuerySqlToken as Query, SerializableValue }
 export type QueryLoader = Pick<
   ReturnType<typeof makeQueryLoader>,
